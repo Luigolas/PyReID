@@ -15,8 +15,6 @@ class Dataset():
         self.id_regex = "P[1-6]_[0-9]{3}"
         self.probe = None
         self.gallery = None
-        self._preprocessing = None
-        self._preprocessing_w_masks = True
 
     def set_probe(self, folder):
         self.probe = ImageSet(folder)
@@ -34,12 +32,6 @@ class Dataset():
         :return:
         """
         name = "%s_%s" % (self.probe.name, self.gallery.name)
-        if self._preprocessing:
-            if self._preprocessing_w_masks:
-                preproc_name = "_" + self._preprocessing + "M"
-            else:
-                preproc_name = "_" + self._preprocessing + "U"
-            name += preproc_name
 
         return name
 
@@ -52,9 +44,7 @@ class Dataset():
         :return:
         """
         name = {"Probe": self.probe.name, "Gallery": self.gallery.name}
-        if self._preprocessing:
-            name["Preproc"] = self._preprocessing
-            name["Preproc_Mask"] = self._preprocessing_w_masks
+
         return name
 
     def same_individual(self, id1, id2):
@@ -75,6 +65,3 @@ class Dataset():
         self.gallery.files = None
         del self.gallery
         del self.probe
-
-
-

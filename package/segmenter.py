@@ -3,11 +3,12 @@ import package.app as app
 import cv2
 import numpy as np
 from package.image import Image, CS_BGR
+from package.utilities import FileNotFoundError
 
 __author__ = 'luigolas'
 
 
-class Segmenter():
+class Segmenter(object):
     compatible_color_spaces = []
 
     def segment(self, image):
@@ -16,21 +17,21 @@ class Segmenter():
         :param image:
         :raise NotImplementedError:
         """
-        raise NotImplementedError("Please Implement segment method")
+        raise NotImplementedError("Please Implement segment _method")
 
 
 class Grabcut(Segmenter):
     compatible_color_spaces = [CS_BGR]
 
-    def __init__(self, mask_source, iterCount, color_space=CS_BGR):
+    def __init__(self, mask_source, iter_count=2, color_space=CS_BGR):
         self._mask_name = mask_source.split("/")[-1].split(".")[0]
         self._mask = np.loadtxt(mask_source, np.uint8)
-        self._iterCount = iterCount
+        self._iter_count = iter_count
         if color_space not in Grabcut.compatible_color_spaces:
             raise AttributeError("Grabcut can't work with colorspace " + str(color_space))
         self._colorspace = color_space
-        self.name = type(self).__name__ + str(self._iterCount) + self._mask_name
-        self.dict_name = {"Segmenter": str(type(self).__name__), "SegIter": self._iterCount,
+        self.name = type(self).__name__ + str(self._iter_count) + self._mask_name
+        self.dict_name = {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
                           "Mask": self._mask_name}
 
     def segment(self, image):
@@ -58,7 +59,7 @@ class Grabcut(Segmenter):
         fgdmodel = np.zeros((1, 65), np.float64)
         # mask = self._mask.copy()
         mask = copy.copy(self._mask)
-        cv2.grabCut(image, mask, None, bgdmodel, fgdmodel, self._iterCount, cv2.GC_INIT_WITH_MASK)
+        cv2.grabCut(image, mask, None, bgdmodel, fgdmodel, self._iter_count, cv2.GC_INIT_WITH_MASK)
 
         mask = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
 
@@ -68,9 +69,9 @@ class Grabcut(Segmenter):
         return mask
 
     def dbname(self, imgname):
-        classname = type(self).__name__
+        class_name = type(self).__name__
         foldername = imgname.split("/")[-2]
         imgname = imgname.split("/")[-1]
         imgname = imgname.split(".")[0]  # Take out file extension
-        keys = ["masks", classname, "iter" + str(self._iterCount), self._mask_name, foldername, imgname]
+        keys = ["masks", class_name, "iter" + str(self._iter_count), self._mask_name, foldername, imgname]
         return keys

@@ -73,3 +73,7 @@ class ImagesNotFoundError(Exception):
 
 class NotADirectoryError(Exception):
     pass
+
+
+class FileNotFoundError(Exception):
+    pass

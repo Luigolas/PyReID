@@ -1,20 +1,38 @@
+from sklearn.cross_validation import ShuffleSplit
+
 __author__ = 'luigolas'
 
 
 from package.image_set import ImageSet
 import re
-# import numpy as np
+import numpy as np
 # import package.image as image
-# import package.evaluator as evaluator
+# import package.feature_extractor as feature_extractor
 # import itertools
 # import cv2
 
 
-class Dataset():
-    def __init__(self):
-        self.id_regex = "P[1-6]_[0-9]{3}"
-        self.probe = None
-        self.gallery = None
+class Dataset(object):
+    def __init__(self, probe=None, gallery=None):
+        if probe is not None:
+            if "viper" in probe:
+                self.id_regex = "[0-9]{3}_"
+            elif "CUHK" in probe:
+                self.id_regex = "P[1-6]_[0-9]{3}"
+            else:  # Default to viper name convection
+                self.id_regex = "[0-9]{3}_"
+
+        if probe is not None:
+            self.probe = ImageSet(probe)
+        else:
+            self.probe = None
+        if gallery is not None:
+            self.gallery = ImageSet(gallery)
+        else:
+            self.gallery = None
+        self.train_indexes = None
+        self.test_indexes = None
+        self.preprocessed_probe = None
 
     def set_probe(self, folder):
         self.probe = ImageSet(folder)
@@ -55,6 +73,23 @@ class Dataset():
     def calc_masks(self, segmenter):
         self.probe.calc_masks(segmenter)
         self.gallery.calc_masks(segmenter)
+
+    def generate_train_set(self, train_size=20):
+        """
+
+        :param train_size: float or int (default=20)
+            If float, should be between 0.0 and 1.0 and represent the
+            proportion of the dataset to include in the train split. If
+            int, represents the absolute number of train samples.
+        :return:
+        """
+        total_len = self.probe.len  # Assumes same gallery and probe size
+        if type(train_size) == float:
+            train_size = round(total_len * train_size)
+        generator = np.random.RandomState()
+        reordered = generator.permutation(total_len)
+        self.train_indexes = reordered[:train_size]
+        self.test_indexes = reordered[train_size:]
 
     def unload(self):
         self.probe.images = None

@@ -2,7 +2,7 @@ __author__ = 'luigolas'
 
 import numpy as np
 import cv2
-from package.utilities import safe_ln
+from package.utilities import safe_ln, FileNotFoundError
 import package.app as app
 
 CS_IIP = 1
@@ -52,7 +52,7 @@ class Image(np.ndarray):
             imgname = src.imgname
         self.imgname = imgname
         self.colorspace = colorspace
-        #This method should NOT affect DB
+        # This _method should NOT affect DB
 
     def __deepcopy__(self, memo):
         # Allowing deepcopy of Images
@@ -71,14 +71,14 @@ class Image(np.ndarray):
         self.colorspace = getattr(obj, 'colorspace', CS_BGR)
 
     def __reduce__(self):
-        #Enables pickling, needed for multiprocessing
+        # Enables pickling, needed for multiprocessing
         object_state = list(np.ndarray.__reduce__(self))
         subclass_state = (self.imgname, self.colorspace)
         object_state[2] = (object_state[2], subclass_state)
         return tuple(object_state)
 
     def __setstate__(self, state):
-        #Enables pickling, needed for multiprocessing
+        # Enables pickling, needed for multiprocessing
         nd_state, own_state = state
         np.ndarray.__setstate__(self, nd_state)
 
@@ -144,11 +144,11 @@ class Image(np.ndarray):
 
     def _bgr2iip(self):
 
-        #Convert to CV_32F3 , floating point in range 0.0 , 1.0
+        # Convert to CV_32F3 , floating point in range 0.0 , 1.0
         # imgf32 = np.float32(self)
         # imgf32 = imgf32*1.0/255
 
-        #Clip values to min value
+        # Clip values to min value
         src = self.clip(bgr2iipClip)
 
         # src_xyz = cv2.cvtColor(imgf32, cv2.COLOR_BGR2XYZ)

@@ -5,7 +5,7 @@ from package.image import Image
 from package.utilities import ImagesNotFoundError, NotADirectoryError
 
 
-class ImageSet():
+class ImageSet(object):
     def __init__(self, folder_name, name_ids=2):
         self.path = ImageSet._valid_directory(folder_name)
         self.name = "_".join(self.path.split("/")[-name_ids:])

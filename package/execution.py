@@ -97,6 +97,9 @@ class Execution():
         print("Preprocessing")  # Requires Masks already calculated
         self.dataset.preprocessed_probe = self._preprocess()
 
+        print("Tranforming Dataset")
+        self._transform_dataset()
+
         # Calculate Comparison matrix
         print("Calculating Comparison Matrix")
         self._calc_comparison_matrix()
@@ -212,6 +215,15 @@ class Execution():
             return
         else:
             return self.preprocessing.preprocess(self.dataset)
+
+    def _transform_dataset(self):
+        global probeX, galleryY
+        if self.dataset.preprocessed_probe is not None:
+            probeX = self.dataset.preprocessed_probe
+        else:
+            probeX = self.dataset.probe
+
+        galleryY = self.dataset.gallery
 
 
 def paralyze(*args):

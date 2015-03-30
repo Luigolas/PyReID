@@ -21,6 +21,8 @@ class Preprocessing(object):
         # probe_masks = np.asarray(dataset.probe.masks)[dataset.train_indexes]
         # gallery_images = np.asarray(dataset.gallery.images)[dataset.train_indexes]
         # gallery_masks = np.asarray(dataset.gallery.masks)[dataset.train_indexes]
+        if dataset.train_indexes is None:
+            raise InitializationError("Can't preprocess if not train/test split defined")
         probe_images = [dataset.probe.images[i] for i in dataset.train_indexes]
         probe_masks = [dataset.probe.masks[i] for i in dataset.train_indexes]
         gallery_images = [dataset.gallery.images[i] for i in dataset.train_indexes]
@@ -28,9 +30,9 @@ class Preprocessing(object):
         if self._method == "CBTF":
             f = self._btf(probe_images, gallery_images, probe_masks, gallery_masks)
 
-        #TODO Consider gMBTF
+        # TODO Consider gMBTF
         # elif self._method == "gMBTF":
-        #     elements_left = dataset.train_indexes.copy()
+        # elements_left = dataset.train_indexes.copy()
         #     btfs = [np.array([0] * 256), np.array([0] * 256), np.array([0] * 256)]
         #     count_btfs = 0
         #     while len(elements_left) > 0:
@@ -70,15 +72,19 @@ class Preprocessing(object):
                     # btfs.append(btf(im, im2, mask1, mask2))
                     result = self._btf(im, im2, mask1, mask2)
                     count_btfs += 1
-                    for channel, elem in enumerate(result):
-                        btfs[channel] += elem
-            f = [np.asarray(np.rint(x / count_btfs), np.int) for x in btfs]
+                    # for channel, elem in enumerate(result):
+                    #     btfs[channel] += elem
+                    btfs += result
+            f = np.asarray([np.rint(x / count_btfs) for x in btfs], np.int)
 
         else:
             raise AttributeError("Not a valid preprocessing key")
 
         if f is None:
             raise NotImplementedError
+
+
+
         new_images = []
         for im in dataset.probe.images:
             new_images.append(self.convert_image(f, im, self._method))
@@ -92,7 +98,8 @@ class Preprocessing(object):
         cumh1 = Preprocessing._cummhist(im1, masks=mask1)
         cumh2 = Preprocessing._cummhist(im2, masks=mask2)
         # For each value in cumh1, look for the closest one (floor, ceil, round?) in cum2, and save index of cum2.
-        func = [np.empty_like(h, np.uint8) for h in cumh1]
+        # func = [np.empty_like(h, np.uint8) for h in cumh1]
+        func = np.empty_like(cumh1, np.uint8)
         for f_i, hist_i, hist2_i in zip(func, cumh1, cumh2):  # For each channel
             for index, value in enumerate(hist_i):
                 f_i[index] = find_nearest(hist2_i, value)
@@ -110,11 +117,16 @@ class Preprocessing(object):
             masks = [masks] * len(ims)
         h = []
         for im, mask in zip(ims, masks):
-            result = ev.transform(im, mask, normalization=None)[0]
-            h = [a + b for a, b in itertools.izip_longest(h, result, fillvalue=0)]  # Accumulate with previous histograms
+            result = ev.transform(im, mask, normalization=None)
+            h = [a + b for a, b in
+                 itertools.izip_longest(h, list(result), fillvalue=0)]  # Accumulate with previous histograms
 
         # Normalize each histogram
-        return [feature_extractor.Histogram.normalize_hist(h_channel.cumsum(), normalization=cv2.NORM_INF) for h_channel in h]
+        num_channels = len(feature_extractor.Histogram.channels[colorspace])
+        h = np.asarray(h).reshape(num_channels, len(h) / num_channels)
+        return np.asarray(
+            [feature_extractor.Histogram.normalize_hist(h_channel.cumsum(), normalization=cv2.NORM_INF) for h_channel
+             in h])
 
     @staticmethod
     def convert_image(f, im, method):

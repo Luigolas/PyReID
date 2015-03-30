@@ -79,7 +79,8 @@ class Histogram(FeatureExtractor):
             # print("Histogram")
             hist = self.calcHistNormalized(image, mask, region, normalization)
             histograms.append(hist)
-        return histograms
+
+        return numpy.asarray(histograms).flatten()
 
     # noinspection PyPep8Naming
     def calcHistNormalized(self, image, mask, region, normalization):

@@ -1,5 +1,5 @@
 # coding=utf-8
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 import cv2
 import numpy as np
 import package.execution as execution
@@ -31,6 +31,7 @@ class CompHistograms(Comparator):
     :param comp_method:
     :raise AttributeError:
     """
+
     def __init__(self, comp_method, weights=None):
 
         if comp_method not in [0, 1, 2, 3, 4]:  # Not the best way to check
@@ -58,10 +59,9 @@ class CompHistograms(Comparator):
         :param hists2:
         :return:
         """
+        #TODO Have to admit entries as numpy array
 
-        CompHistograms._check_size_params(hists1, self._weights)
-        CompHistograms._check_size_params(hists2, self._weights)
-        CompHistograms._check_compatibility(hists1, hists2)
+        CompHistograms._check_size_params(hists1, hists2, self._weights)
 
         if self._weights is None:
             weights = [1]
@@ -69,7 +69,9 @@ class CompHistograms(Comparator):
             weights = self._weights
 
         comp_val = []
-        for h1, h2 in zip(hists1, hists2):
+        hist1 = hists1.reshape((hists1.shape[0] / 2, 2))
+        hist2 = hists2.reshape((hists2.shape[0] / 2, 2))
+        for h1, h2 in zip(hist1, hist2):
             if isinstance(h1, list):  # 2D case
                 comp_val.append(sum([self.compareHist(h1_sub, h2_sub) for (h1_sub, h2_sub) in zip(h1, h2)]))
             else:  # 3D case
@@ -84,7 +86,7 @@ class CompHistograms(Comparator):
             return cv2.compareHist(h1, h2, self.method)
 
     @staticmethod
-    def _check_size_params(hist, weights):
+    def _check_size_params(hist1, hist2, weights):
         """
 
         :param hist:
@@ -94,19 +96,12 @@ class CompHistograms(Comparator):
         # if not isinstance(weights, list):
         #     raise TypeError("Weights parameter must be a list of values")
         if weights:  # Both initialized
-            if len(hist) != len(weights):
-                raise IndexError("Size of hist and weights arrays should match; hist: "
-                                 + str(len(hist)) + "; weights: " + str(len(weights)))
-        elif len(hist) != 1:
-            # print(hist)
-            raise IndexError("Size of histograms list must be 1 for weights=None")
-
-    @classmethod
-    def _check_compatibility(cls, hists1, hists2):
-        if len(hists1) != len(hists2):
-            raise IndexError("Size of histograms should match")
-        if isinstance(hists1, list):
-            if not isinstance(hists2, list) or len(hists1[0]) != len(hists2[0]):
-                raise TypeError("Histograms not compatible")
-        elif hists1[0].shape != hists2[0].shape:
-            raise TypeError("Histograms not compatible")
+            if hist1.shape[0] % len(weights) != 0:
+                raise IndexError("Size of hist and weights not compatible; hist: "
+                                 + str(hist1.shape[0]) + "; weights: " + str(len(weights)))
+            if hist2.shape[0] % len(weights) != 0:
+                raise IndexError("Size of hist and weights not compatible; hist: "
+                                 + str(hist2.shape[0]) + "; weights: " + str(len(weights)))
+        elif hist1.shape[0] != hist2.shape[0]:
+            raise IndexError(
+                "Size of histograms must be the same. Size1:%d _ Size2:%d" & (hist1.shape[0], hist2.shape[0]))

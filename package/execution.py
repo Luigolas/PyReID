@@ -14,6 +14,7 @@ import package.image as image
 # from memory_profiler import profile
 import itertools
 from package.dataset import Dataset
+from sklearn.externals.joblib import Parallel, delayed
 
 
 __author__ = 'luigolas'
@@ -24,15 +25,23 @@ galleryY = []
 
 
 class Execution():
-    def __init__(self):
-        self.dataset = Dataset()
-        self.segmenter = None
-        self.preprocessing = None
-        self.feature_extractor = None
-        self.comparator = None
+    def __init__(self, dataset=None, segmenter=None, preproc=None, feature_extractor=None, comparator=None,
+                 post_ranker=None, train_split=None):
+
+        if dataset is not None:
+            self.dataset = dataset
+        else:
+            self.dataset = Dataset()
+        if train_split is not None:
+            self.dataset.generate_train_set(train_split)
+
+        self.segmenter = segmenter
+        self.preprocessing = preproc
+        self.feature_extractor = feature_extractor
+        self.comparator = comparator
         self.comparison_matrix = None
         self.ranking_matrix = None
-        self.post_ranker = None
+        self.post_ranker = post_ranker
 
     def set_probe(self, folder):
         self.dataset.set_probe(folder)
@@ -65,7 +74,8 @@ class Execution():
         :return:
         """
 
-        name = "%s_%s_%s_%s" % (self.dataset.name(), self.segmenter.name, self.feature_extractor.name, self.comparator.name)
+        name = "%s_%s_%s_%s" % (
+            self.dataset.name(), self.segmenter.name, self.feature_extractor.name, self.comparator.name)
         return name
 
     def dict_name(self):
@@ -140,67 +150,23 @@ class Execution():
             raise InitializationError("comparator not initialized")
 
     # @profile
-    def _calc_comparison_matrix(self):
+    def _calc_comparison_matrix(self, n_jobs=1):
         global probeX, galleryY
-        if app.multiprocessing:
+        # if app.multiprocessing:
 
-            # Calc all evaluations
-            # nprocs = (multiprocessing.cpu_count() * 2) - 1
-            # nprocs = multiprocessing.cpu_count()
-            nprocs = 1
-            args_probe = ((img_p, mask_p) for img_p, mask_p in zip(self.dataset.probe.images, self.dataset.probe.masks))
-            args_gallery = ((img_g, mask_g) for img_g, mask_g in zip(self.dataset.gallery.images,
-                                                                     self.dataset.gallery.masks))
-            args = itertools.chain(args_probe, args_gallery)
-            args = zip(itertools.repeat(self.feature_extractor.evaluate), args)
-            # chunksize = int(math.ceil((len(self.dataset.probe.files) + len(self.dataset.gallery.files))
-            #                           / float(nprocs * 2)))
-            chunksize = 1
+        args = ((index1, index2) for index1 in range(self.dataset.probe.len)
+                for index2 in range(self.dataset.gallery.len))
 
-            pool = multiprocessing.Pool(processes=nprocs)
-            evaluations = list(pool.imap(paralyze, args, chunksize=chunksize))
+        results = Parallel(n_jobs)(delayed(_parallel_compare)(self.comparator, i1, i2) for i1, i2 in args)
 
-            pool.close()
-            pool.join()
+        self.comparison_matrix = np.asarray(results, np.float32)
 
-            probeX = evaluations[:self.dataset.probe.len]
-            galleryY = evaluations[self.dataset.probe.len:]
-            del evaluations  # Necessary?
-
-            pool = multiprocessing.Pool(processes=nprocs)
-            args = ((index1, index2) for index1 in range(self.dataset.probe.len)
-                    for index2 in range(self.dataset.gallery.len))
-            args = zip(itertools.repeat(self.comparator.compare_by_index), args)
-
-            # Orginal Version
-            chunksize = int(math.ceil((self.dataset.probe.len * self.dataset.gallery.len) / float(nprocs)))
-            self.comparison_matrix = np.fromiter(pool.map(paralyze, args, chunksize), np.float32)
-
-            pool.close()
-            pool.join()
-
-            self.comparison_matrix.shape = (self.dataset.probe.len, self.dataset.gallery.len)
-
-            # del pool
-        else:
-            self.comparison_matrix = np.empty((self.dataset.probe.len, self.dataset.gallery.len), np.float32)
-            galleryY = []
-            probeX = []
-
-            for img_g, mask_g in zip(self.dataset.gallery.images, self.dataset.gallery.masks):
-                galleryY.append(self.feature_extractor.evaluate(img_g, mask_g))
-
-            for row, (img_p, mask_p) in enumerate(zip(self.dataset.probe.images, self.dataset.probe.masks)):
-                probeX.append(self.feature_extractor.evaluate(img_p, mask_p))
-                for column in range(self.dataset.gallery.len):
-                    # print("Row: ", row, " Column: ", column)
-                    self.comparison_matrix[row][column] = self.comparator.compare_by_index(row, column)
+        self.comparison_matrix.shape = (self.dataset.probe.len, self.dataset.gallery.len)
 
     def _calc_ranking_matrix(self):
         import package.comparator as Comparator
         # noinspection PyTypeChecker
-        if self.comparator.method == Comparator.HISTCMP_CORRE or \
-           self.comparator.method == Comparator.HISTCMP_INTERSECT:
+        if self.comparator.method == Comparator.HISTCMP_CORRE or self.comparator.method == Comparator.HISTCMP_INTERSECT:
             self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)[:, ::-1].astype(np.int16)
             # Reverse order by axis 1
 
@@ -208,7 +174,7 @@ class Execution():
         else:
             # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
             self.ranking_matrix = np.argsort(self.comparison_matrix).astype(np.int16)
-        # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
+            # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
 
     def _preprocess(self):
         if not self.preprocessing:
@@ -216,17 +182,34 @@ class Execution():
         else:
             return self.preprocessing.preprocess(self.dataset)
 
-    def _transform_dataset(self):
+    def _transform_dataset(self, n_jobs=4):
         global probeX, galleryY
         if self.dataset.preprocessed_probe is not None:
             probeX = self.dataset.preprocessed_probe
         else:
             probeX = self.dataset.probe
 
-        galleryY = self.dataset.gallery
+        galleryY = self.dataset.gallery.images
+
+        args_probe = ((img_p, mask_p) for img_p, mask_p in zip(probeX, self.dataset.probe.masks))
+        args_gallery = ((img_g, mask_g) for img_g, mask_g in zip(galleryY, self.dataset.gallery.masks))
+        args = itertools.chain(args_probe, args_gallery)
+
+        results = Parallel(n_jobs)(delayed(_parallel_transform)(self.feature_extractor, im, mask) for im, mask in args)
+        probeX = np.asarray(results[:self.dataset.probe.len])
+        galleryY = np.asarray(results[self.dataset.probe.len:])
 
 
 def paralyze(*args):
     return args[0][0](*args[0][1:][0])
     pass
+
+
+def _parallel_transform(fe, im, mask):
+    return fe.transform(im, mask)
+
+
+def _parallel_compare(comp, i1, i2):
+    return comp.compare_by_index(i1, i2)
+
 

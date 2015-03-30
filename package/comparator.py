@@ -50,6 +50,9 @@ class CompHistograms(Comparator):
         """
         hists1 = execution.probeX[hists1index]
         hists2 = execution.galleryY[hists2index]
+        # if hists2index == 484:
+            # print("salpica")
+            # print(hists2)
         return self.compare(hists1, hists2)
 
     def compare(self, hists1, hists2):
@@ -59,8 +62,6 @@ class CompHistograms(Comparator):
         :param hists2:
         :return:
         """
-        #TODO Have to admit entries as numpy array
-
         CompHistograms._check_size_params(hists1, hists2, self._weights)
 
         if self._weights is None:
@@ -69,12 +70,18 @@ class CompHistograms(Comparator):
             weights = self._weights
 
         comp_val = []
-        hist1 = hists1.reshape((hists1.shape[0] / 2, 2))
-        hist2 = hists2.reshape((hists2.shape[0] / 2, 2))
+        num_histograms = len(weights)
+        hist1 = hists1.reshape((num_histograms, hists1.shape[0] / num_histograms))
+        hist2 = hists2.reshape((num_histograms, hists2.shape[0] / num_histograms))
         for h1, h2 in zip(hist1, hist2):
-            if isinstance(h1, list):  # 2D case
-                comp_val.append(sum([self.compareHist(h1_sub, h2_sub) for (h1_sub, h2_sub) in zip(h1, h2)]))
-            else:  # 3D case
+            # if isinstance(h1, list):  # 2D case
+            # comp_val.append(sum([self.compareHist(h1_sub, h2_sub) for (h1_sub, h2_sub) in zip(h1, h2)]))
+            # else:  # 3D case
+            if np.count_nonzero(h1) == 0 and np.count_nonzero(h2) == 0:
+                # Might return inequality when both histograms are zero. So we compare two simple histogram to ensure
+                # equality return value
+                comp_val.append(self.compareHist(np.asarray([1], np.float32), np.asarray([1], np.float32)))
+            else:
                 comp_val.append(self.compareHist(h1, h2))
         comp_val = sum([i * j for i, j in zip(comp_val, weights)])
         return comp_val
@@ -94,7 +101,7 @@ class CompHistograms(Comparator):
         :raise IndexError:
         """
         # if not isinstance(weights, list):
-        #     raise TypeError("Weights parameter must be a list of values")
+        # raise TypeError("Weights parameter must be a list of values")
         if weights:  # Both initialized
             if hist1.shape[0] % len(weights) != 0:
                 raise IndexError("Size of hist and weights not compatible; hist: "

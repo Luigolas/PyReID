@@ -65,6 +65,7 @@ class Histogram(FeatureExtractor):
         :param mask:
         :return:
         """
+        # print("transforming " + image.imgname)
         if self._colorspace and self._colorspace != image.colorspace:
             image = image.to_color_space(self._colorspace)
 
@@ -80,7 +81,7 @@ class Histogram(FeatureExtractor):
             hist = self.calcHistNormalized(image, mask, region, normalization)
             histograms.append(hist)
 
-        return numpy.asarray(histograms).flatten()
+        return numpy.asarray(histograms).flatten().clip(0)
 
     # noinspection PyPep8Naming
     def calcHistNormalized(self, image, mask, region, normalization):

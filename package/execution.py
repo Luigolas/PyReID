@@ -167,11 +167,12 @@ class Execution():
         import package.comparator as Comparator
         # noinspection PyTypeChecker
         if self.comparator.method == Comparator.HISTCMP_CORRE or self.comparator.method == Comparator.HISTCMP_INTERSECT:
+            #  The biggest value, the better
             self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)[:, ::-1].astype(np.int16)
             # Reverse order by axis 1
 
             # self.ranking_matrix = np.argsort(self.comparison_matrix[:, ::-1])
-        else:
+        else:  # The lower value, the better
             # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
             self.ranking_matrix = np.argsort(self.comparison_matrix).astype(np.int16)
             # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)

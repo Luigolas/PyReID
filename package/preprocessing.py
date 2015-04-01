@@ -10,13 +10,25 @@ import numpy as np
 
 
 class Preprocessing(object):
+    def preprocess(self, dataset):
+        raise NotImplementedError("Please Implement preprocess method")
+
+    def convert_image(self, im):
+        raise NotImplementedError("Please Implement convert_image method")
+
+
+class BTF(Preprocessing):
     def __init__(self, method):
         if not (method == "CBTF" or method == "ngMBTF"):  # or method == "gMBTF"
-            raise InitializationError("Method " + method + " is not a valid preprocessing _method")
+            raise InitializationError("Method " + method + " is not a valid preprocessing method")
         self._method = method
+        self.btf = None
+
+    def dict_name(self):
+        return {"Preproc": self._method}
 
     def preprocess(self, dataset):
-        f = None
+        self.btf = None
         # probe_images = np.asarray(dataset.probe.images)[dataset.train_indexes]
         # probe_masks = np.asarray(dataset.probe.masks)[dataset.train_indexes]
         # gallery_images = np.asarray(dataset.gallery.images)[dataset.train_indexes]
@@ -28,7 +40,7 @@ class Preprocessing(object):
         gallery_images = [dataset.gallery.images[i] for i in dataset.train_indexes]
         gallery_masks = [dataset.gallery.masks[i] for i in dataset.train_indexes]
         if self._method == "CBTF":
-            f = self._btf(probe_images, gallery_images, probe_masks, gallery_masks)
+            self.btf = self._btf(probe_images, gallery_images, probe_masks, gallery_masks)
 
         # TODO Consider gMBTF
         # elif self._method == "gMBTF":
@@ -75,19 +87,17 @@ class Preprocessing(object):
                     # for channel, elem in enumerate(result):
                     #     btfs[channel] += elem
                     btfs += result
-            f = np.asarray([np.rint(x / count_btfs) for x in btfs], np.int)
+            self.btf = np.asarray([np.rint(x / count_btfs) for x in btfs], np.int)
 
         else:
             raise AttributeError("Not a valid preprocessing key")
 
-        if f is None:
+        if self.btf is None:
             raise NotImplementedError
-
-
 
         new_images = []
         for im in dataset.probe.images:
-            new_images.append(self.convert_image(f, im, self._method))
+            new_images.append(self.convert_image(im))
         return new_images
 
     @staticmethod
@@ -95,8 +105,8 @@ class Preprocessing(object):
         def find_nearest(array, value):
             return (np.abs(array - value)).argmin()
 
-        cumh1 = Preprocessing._cummhist(im1, masks=mask1)
-        cumh2 = Preprocessing._cummhist(im2, masks=mask2)
+        cumh1 = BTF._cummhist(im1, masks=mask1)
+        cumh2 = BTF._cummhist(im2, masks=mask2)
         # For each value in cumh1, look for the closest one (floor, ceil, round?) in cum2, and save index of cum2.
         # func = [np.empty_like(h, np.uint8) for h in cumh1]
         func = np.empty_like(cumh1, np.uint8)
@@ -128,14 +138,13 @@ class Preprocessing(object):
             [feature_extractor.Histogram.normalize_hist(h_channel.cumsum(), normalization=cv2.NORM_INF) for h_channel
              in h])
 
-    @staticmethod
-    def convert_image(f, im, method):
+    def convert_image(self, im):
         im_converted = np.empty_like(im)
         for row in range(im.shape[0]):
             for column in range(im.shape[1]):
                 pixel = im[row, column]
                 for channel, elem in enumerate(pixel):
-                    im_converted[row, column, channel] = f[channel][elem]
+                    im_converted[row, column, channel] = self.btf[channel][elem]
         imgname = im.imgname.split(".")
-        imgname = ".".join(imgname[:-1]) + method + "." + imgname[-1]
+        imgname = ".".join(imgname[:-1]) + self._method + "." + imgname[-1]
         return image.Image(im_converted, colorspace=im.colorspace, imgname=imgname)

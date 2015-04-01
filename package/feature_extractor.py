@@ -55,8 +55,8 @@ class Histogram(FeatureExtractor):
 
         self.name = "Histogram_%s_%s_%s_%s" % (colorspace_name[self._colorspace], self._bins, self._region_name,
                                                self._dimension)
-        self.dict_name = {"Evaluator": "Histogram", "EvColorSpace": colorspace_name[self._colorspace],
-                          "EvBins": str(self._bins), "Regions": self._region_name, "EvDim": self._dimension}
+        self.dict_name = {"Feature_Extractor": "Histogram", "FeColorSpace": colorspace_name[self._colorspace],
+                          "FeBins": str(self._bins), "Regions": self._region_name, "FeDim": self._dimension}
 
     def transform(self, image, mask=None, normalization=cv2.NORM_MINMAX):
         """

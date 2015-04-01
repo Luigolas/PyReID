@@ -35,7 +35,7 @@ class CompHistograms(Comparator):
     def __init__(self, comp_method, weights=None):
 
         if comp_method not in [0, 1, 2, 3, 4]:  # Not the best way to check
-            raise AttributeError("Comparisson _method must be one of the predefined")
+            raise AttributeError("Comparisson method must be one of the predefined for CompHistograms")
         self.method = comp_method
         self._weights = weights
         self.name = method_names[self.method]
@@ -50,9 +50,6 @@ class CompHistograms(Comparator):
         """
         hists1 = execution.probeX[hists1index]
         hists2 = execution.galleryY[hists2index]
-        # if hists2index == 484:
-            # print("salpica")
-            # print(hists2)
         return self.compare(hists1, hists2)
 
     def compare(self, hists1, hists2):

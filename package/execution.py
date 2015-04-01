@@ -20,8 +20,12 @@ from sklearn.externals.joblib import Parallel, delayed
 __author__ = 'luigolas'
 
 # For big improvements in multiprocesing
-probeX = []
-galleryY = []
+probeX = None
+galleryY = None
+probeXtest = None
+# probeXtrain = None
+galleryYtest = None
+# galleryYtrain = None
 
 
 class Execution():
@@ -87,6 +91,7 @@ class Execution():
         :return:
         """
         name = {}
+        name.update(self.preprocessing.dict_name())
         name.update(self.dataset.dict_name())
         name.update(self.segmenter.dict_name)
         name.update(self.feature_extractor.dict_name)
@@ -94,7 +99,7 @@ class Execution():
         return name
 
     def run(self):
-        global probeX, galleryY
+        global probeX, galleryY, probeXtest, galleryYtest
         probeX = []
         galleryY = []
 
@@ -110,6 +115,12 @@ class Execution():
         print("Tranforming Dataset")
         self._transform_dataset()
 
+        if self.dataset.test_indexes is not None:
+            # probeXtrain = probeX[self.dataset.train_indexes]
+            # galleryYtrain = galleryY[self.dataset.train_indexes]
+            probeXtest = probeX[self.dataset.test_indexes]
+            galleryYtest = galleryY[self.dataset.test_indexes]
+
         # Calculate Comparison matrix
         print("Calculating Comparison Matrix")
         self._calc_comparison_matrix()
@@ -118,8 +129,10 @@ class Execution():
         print("Calculating Ranking Matrix")
         self._calc_ranking_matrix()
 
-        probeX = []
-        galleryY = []
+        probeX = None
+        galleryY = None
+        probeXtest = None
+        galleryYtest = None
 
     def unload(self):
         self.dataset.unload()
@@ -149,41 +162,13 @@ class Execution():
         if self.comparator is None:
             raise InitializationError("comparator not initialized")
 
-    # @profile
-    def _calc_comparison_matrix(self, n_jobs=1):
-        global probeX, galleryY
-        # if app.multiprocessing:
-
-        args = ((index1, index2) for index1 in range(self.dataset.probe.len)
-                for index2 in range(self.dataset.gallery.len))
-
-        results = Parallel(n_jobs)(delayed(_parallel_compare)(self.comparator, i1, i2) for i1, i2 in args)
-
-        self.comparison_matrix = np.asarray(results, np.float32)
-
-        self.comparison_matrix.shape = (self.dataset.probe.len, self.dataset.gallery.len)
-
-    def _calc_ranking_matrix(self):
-        import package.comparator as Comparator
-        # noinspection PyTypeChecker
-        if self.comparator.method == Comparator.HISTCMP_CORRE or self.comparator.method == Comparator.HISTCMP_INTERSECT:
-            #  The biggest value, the better
-            self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)[:, ::-1].astype(np.int16)
-            # Reverse order by axis 1
-
-            # self.ranking_matrix = np.argsort(self.comparison_matrix[:, ::-1])
-        else:  # The lower value, the better
-            # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
-            self.ranking_matrix = np.argsort(self.comparison_matrix).astype(np.int16)
-            # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
-
     def _preprocess(self):
         if not self.preprocessing:
             return
         else:
             return self.preprocessing.preprocess(self.dataset)
 
-    def _transform_dataset(self, n_jobs=4):
+    def _transform_dataset(self, n_jobs=-1):
         global probeX, galleryY
         if self.dataset.preprocessed_probe is not None:
             probeX = self.dataset.preprocessed_probe
@@ -200,6 +185,41 @@ class Execution():
         probeX = np.asarray(results[:self.dataset.probe.len])
         galleryY = np.asarray(results[self.dataset.probe.len:])
 
+    # @profile
+    def _calc_comparison_matrix(self, n_jobs=-1):
+        global probeX, galleryY, probeXtest, galleryYtest
+
+        if probeXtest is not None:
+            args = ((elem1, elem2) for elem1 in probeXtest for elem2 in galleryYtest)
+        else:
+            args = ((elem1, elem2) for elem1 in probeX for elem2 in galleryY)
+
+        # args = ((index1, index2) for index1 in range(self.dataset.probe.len)
+        #         for index2 in range(self.dataset.gallery.len))
+
+        results = Parallel(n_jobs)(delayed(_parallel_compare)(self.comparator, e1, e2) for e1, e2 in args)
+
+        self.comparison_matrix = np.asarray(results, np.float32)
+
+        size = math.sqrt(self.comparison_matrix.shape[0])
+        self.comparison_matrix.shape = (size, size)
+
+        # self.comparison_matrix.shape = (self.dataset.probe.len, self.dataset.gallery.len)
+
+    def _calc_ranking_matrix(self):
+        import package.comparator as Comparator
+        # noinspection PyTypeChecker
+        if self.comparator.method == Comparator.HISTCMP_CORRE or self.comparator.method == Comparator.HISTCMP_INTERSECT:
+            #  The biggest value, the better
+            self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)[:, ::-1].astype(np.int16)
+            # Reverse order by axis 1
+
+            # self.ranking_matrix = np.argsort(self.comparison_matrix[:, ::-1])
+        else:  # The lower value, the better
+            # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
+            self.ranking_matrix = np.argsort(self.comparison_matrix).astype(np.int16)
+            # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
+
 
 def paralyze(*args):
     return args[0][0](*args[0][1:][0])
@@ -211,6 +231,7 @@ def _parallel_transform(fe, im, mask):
 
 
 def _parallel_compare(comp, i1, i2):
-    return comp.compare_by_index(i1, i2)
+    # return comp.compare_by_index(i1, i2)
+    return comp.compare(i1, i2)
 
 

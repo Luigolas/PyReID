@@ -62,13 +62,30 @@ class Dataset(object):
         :return:
         """
         name = {"Probe": self.probe.name, "Gallery": self.gallery.name}
+        if self.train_indexes is not None:
+            name.update({"Train": len(self.train_indexes), "Test": len(self.test_indexes)})
 
         return name
 
-    def same_individual(self, id1, id2):
-        elem_id1 = re.search(self.id_regex, id1).group(0)
-        elem_id2 = re.search(self.id_regex, id2).group(0)
+    def same_individual(self, probe_name, gallery_name):
+        elem_id1 = re.search(self.id_regex, probe_name).group(0)
+        elem_id2 = re.search(self.id_regex, gallery_name).group(0)
         return elem_id1 == elem_id2
+
+    def same_individual_by_id(self, probe_id, gallery_id, set=None):
+        if set == "train":
+            probe_name = self.probe.files[self.train_indexes[probe_id]]
+            gallery_name = self.gallery.files[self.train_indexes[gallery_id]]
+        if set == "test":
+            probe_name = self.probe.files[self.test_indexes[probe_id]]
+            gallery_name = self.gallery.files[self.test_indexes[gallery_id]]
+        elif set is None:
+            probe_name = self.probe.files[probe_id]
+            gallery_name = self.gallery.files[gallery_id]
+        else:
+            raise ValueError("set must be None, \"train\" or \"test\"")
+        return self.same_individual(probe_name, gallery_name)
+
 
     def calc_masks(self, segmenter):
         self.probe.calc_masks(segmenter)
@@ -98,5 +115,9 @@ class Dataset(object):
         self.gallery.images = None
         self.gallery.masks = None
         self.gallery.files = None
+        self.preprocessed_probe = None
+        self.train_indexes = None
+        self.test_indexes = None
         del self.gallery
         del self.probe
+        del self.preprocessed_probe

@@ -64,6 +64,7 @@ class Statistics():
         if self.mean_list is None:
             name.update({"MeanList1": np.NaN, "MeanList2": np.NaN})
         else:
+            # Todo: Generalize
             name.update({"MeanList1": self.mean_list[0]})
             if len(self.mean_list) > 1:
                 name.update({"MeanList2": self.mean_list[1]})
@@ -108,10 +109,8 @@ class Statistics():
         for elemp, rank_list in enumerate(self._exec.ranking_matrix):
             partial_list = []
             for column, elemg in enumerate(rank_list):
-                namep = self._exec.dataset.probe.files[elemp]
-                nameg = self._exec.dataset.gallery.files[elemg]
-                if self._exec.dataset.same_individual(namep, nameg):
-                    partial_list.append(column)
+                if self._exec.dataset.same_individual_by_id(elemp, elemg, set="test"):
+                    partial_list.append(column)  # TODO: If not multiview could break loop
             position_list.append(partial_list)
         self.position_list = np.asarray(position_list, np.uint16)
 

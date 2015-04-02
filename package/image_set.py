@@ -11,25 +11,29 @@ class ImageSet(object):
         self.name = "_".join(self.path.split("/")[-name_ids:])
         # name = "_".join(name)
         self.files = self._read_all_files()
-        self.len = len(self.files)
-        if self.len == 0:
+        self.dataset_len = len(self.files)
+        if self.dataset_len == 0:
             raise ImagesNotFoundError("At folder " + self.path)
         # self.images = self.load_images()
-        self.images = None
-        self.masks = None
+        self.images_train = None
+        self.images_test = None
+        self.masks_train = None
+        self.masks_test = None
+        self.files_train = None
+        self.files_test = None
 
     def __copy__(self):
         # Allowing copy of Images
         result = Image(self.copy(), self.colorspace, self.imgname)
         return result
 
-    def calc_masks(self, segmenter):
-        if self.images is None:
-            self.load_images()
-        self.masks = []
-        for img, imgname in zip(self.images, self.files):
-            self.masks.append(segmenter.segment(img))
-            # self.masks.append(segmenter.segment(self.images[0]))
+    # def calc_masks(self, segmenter):
+    #     if self.images is None:
+    #         self.load_images()
+    #     self.masks = []
+    #     for img, imgname in zip(self.images, self.files):
+    #         self.masks.append(segmenter.segment(img))
+    #         # self.masks.append(segmenter.segment(self.images[0]))
 
     def _read_all_files(self):
         files = []
@@ -41,11 +45,15 @@ class ImageSet(object):
         return files
 
     def load_images(self):
-        images = []
-        for im in self.files:
-            images.append(Image.from_filename(im))
+        self.images_train = []
+        self.images_test = []
 
-        self.images = images
+        for imname in self.files_train:
+            self.images_train.append(Image.from_filename(imname))
+
+        for imname in self.files_test:
+            self.images_test.append(Image.from_filename(imname))
+
 
     @staticmethod
     def _valid_format(name):
@@ -59,4 +67,13 @@ class ImageSet(object):
         if folder_name[-1] == '/':
             folder_name = folder_name[:-1]
         return folder_name
+
+    def unload(self):
+        self.images_train = None
+        self.images_train = None
+        self.masks_train = None
+        self.masks_test = None
+        self.files = None
+        self.files_train = None
+        self.files_test = None
 

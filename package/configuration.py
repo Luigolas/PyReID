@@ -95,8 +95,7 @@ class Configuration():
         for gc_iter, mask, colorspace, bins, dimension, method, preproc, split in itertools.product(
                 segmenter_iter, masks, colorspaces, binss, dimensions, compmethods, preprocessing, train_test_split):
 
-            ex = Execution(Dataset(probe, gallery), Grabcut(mask, gc_iter, CS_BGR), BTF(preproc))
-            ex.dataset.generate_train_set(split[0], split[1])
+            ex = Execution(Dataset(probe, gallery, split[0], split[1]), Grabcut(mask, gc_iter, CS_BGR), BTF(preproc))
 
             if id_regex:
                 ex.set_id_regex(id_regex)
@@ -143,7 +142,7 @@ class Configuration():
             print(statistic.rangeX[0])
             print("")  # New line
 
-            if len(self.post_rankers) >= 0:  # TODO check same number of post_rankers, executions and statistics
+            if len(self.post_rankers) > 0:  # TODO check same number of post_rankers, executions and statistics
                 self.post_rankers[val].run(execution)
 
             #Do some clean up

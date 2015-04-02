@@ -29,25 +29,21 @@ class BTF(Preprocessing):
 
     def preprocess(self, dataset):
         self.btf = None
-        # probe_images = np.asarray(dataset.probe.images)[dataset.train_indexes]
-        # probe_masks = np.asarray(dataset.probe.masks)[dataset.train_indexes]
-        # gallery_images = np.asarray(dataset.gallery.images)[dataset.train_indexes]
-        # gallery_masks = np.asarray(dataset.gallery.masks)[dataset.train_indexes]
-        if dataset.train_indexes is None:
-            raise InitializationError("Can't preprocess if not train/test split defined")
-        probe_images = [dataset.probe.images[i] for i in dataset.train_indexes]
-        probe_masks = [dataset.probe.masks[i] for i in dataset.train_indexes]
-        gallery_images = [dataset.gallery.images[i] for i in dataset.train_indexes]
-        gallery_masks = [dataset.gallery.masks[i] for i in dataset.train_indexes]
+        # if dataset.train_size is None:
+        #     raise InitializationError("Can't preprocess if not train/test split defined")
+        probe_images = dataset.probe.images_train
+        probe_masks = dataset.probe.masks_train
+        gallery_images = dataset.gallery.images_train
+        gallery_masks = dataset.gallery.masks_train
         if self._method == "CBTF":
-            self.btf = self._btf(probe_images, gallery_images, probe_masks, gallery_masks)
+            self.btf = self._calc_btf(probe_images, gallery_images, probe_masks, gallery_masks)
 
         # TODO Consider gMBTF
         # elif self._method == "gMBTF":
         # elements_left = dataset.train_indexes.copy()
         #     btfs = [np.array([0] * 256), np.array([0] * 256), np.array([0] * 256)]
         #     count_btfs = 0
-        #     while len(elements_left) > 0:
+        #     while dataset_len(elements_left) > 0:
         #         individual = [elements_left.pop(0)]
         #         aux_list = []
         #         for elem in elements_left:
@@ -82,7 +78,7 @@ class BTF(Preprocessing):
                               if dataset.same_individual(im.imgname, img.imgname)]
                 for im2, mask2 in to_compare:
                     # btfs.append(btf(im, im2, mask1, mask2))
-                    result = self._btf(im, im2, mask1, mask2)
+                    result = self._calc_btf(im, im2, mask1, mask2)
                     count_btfs += 1
                     # for channel, elem in enumerate(result):
                     #     btfs[channel] += elem
@@ -95,13 +91,19 @@ class BTF(Preprocessing):
         if self.btf is None:
             raise NotImplementedError
 
-        new_images = []
-        for im in dataset.probe.images:
-            new_images.append(self.convert_image(im))
-        return new_images
+        new_images_train = []
+        for im in dataset.probe.images_train:
+            new_images_train.append(self.convert_image(im))
+        dataset.probe.images_train = new_images_train
+
+        new_images_test = []
+        for im in dataset.probe.images_test:
+            new_images_test.append(self.convert_image(im))
+        dataset.probe.images_test = new_images_test
+        # return new_images
 
     @staticmethod
-    def _btf(im1, im2, mask1, mask2):
+    def _calc_btf(im1, im2, mask1, mask2):
         def find_nearest(array, value):
             return (np.abs(array - value)).argmin()
 

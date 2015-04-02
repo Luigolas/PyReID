@@ -99,7 +99,8 @@ class Execution():
         :return:
         """
         name = {}
-        name.update(self.preprocessing.dict_name())
+        if self.preprocessing is not None:
+            name.update(self.preprocessing.dict_name())
         name.update(self.dataset.dict_name())
         name.update(self.segmenter.dict_name)
         name.update(self.feature_extractor.dict_name)
@@ -116,17 +117,17 @@ class Execution():
 
         # if self.dataset.probe.masks is None or self.dataset.gallery.masks is None:
         print("Calculating Masks")  # TODO: Add option for not segmenting
-        self._calc_masks()
+        self._calc_masks(1)
 
         print("Preprocessing")  # Requires Masks already calculated
         self._preprocess()
 
         print("Tranforming Dataset")
-        self._transform_dataset()
+        self._transform_dataset(1)
 
         # Calculate Comparison matrix
         print("Calculating Comparison Matrix")
-        self._calc_comparison_matrix()
+        self._calc_comparison_matrix(1)
 
         # Calculate Ranking matrix
         print("Calculating Ranking Matrix")

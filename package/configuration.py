@@ -95,7 +95,11 @@ class Configuration():
         for gc_iter, mask, colorspace, bins, dimension, method, preproc, split in itertools.product(
                 segmenter_iter, masks, colorspaces, binss, dimensions, compmethods, preprocessing, train_test_split):
 
-            ex = Execution(Dataset(probe, gallery, split[0], split[1]), Grabcut(mask, gc_iter, CS_BGR), BTF(preproc))
+            if preproc is None:
+                btf = None
+            else:
+                btf = BTF(preproc)
+            ex = Execution(Dataset(probe, gallery, split[0], split[1]), Grabcut(mask, gc_iter, CS_BGR), btf)
 
             if id_regex:
                 ex.set_id_regex(id_regex)
@@ -131,16 +135,16 @@ class Configuration():
         for val, (execution, statistic) in enumerate(zip(self.executions, self.statistics)):
             print("******** Execution %d of %d ********" % (val + 1, total))
             execution.run()
-            statistic.set_execution(execution)
-            print("Calculating Statistics")
-            statistic.run()
-            name = statistic.dict_name()
-            if self.dataframe is None:
-                self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
-            else:
-                self.dataframe = self.dataframe.append(name, ignore_index=True)
-            print(statistic.rangeX[0])
-            print("")  # New line
+            # statistic.set_execution(execution)
+            # print("Calculating Statistics")
+            # statistic.run()
+            # name = statistic.dict_name()
+            # if self.dataframe is None:
+            #     self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
+            # else:
+            #     self.dataframe = self.dataframe.append(name, ignore_index=True)
+            # print(statistic.rangeX[0])
+            # print("")  # New line
 
             if len(self.post_rankers) > 0:  # TODO check same number of post_rankers, executions and statistics
                 self.post_rankers[val].run(execution)

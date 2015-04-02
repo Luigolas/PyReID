@@ -110,7 +110,7 @@ class Statistics():
             partial_list = []
             for column, elemg in enumerate(rank_list):
                 if self._exec.dataset.same_individual_by_id(elemp, elemg, set="test"):
-                    partial_list.append(column)  # TODO: If not multiview could break loop
+                    partial_list.append(column)  # TODO: If not multiview we could exit loop here
             position_list.append(partial_list)
         self.position_list = np.asarray(position_list, np.uint16)
 

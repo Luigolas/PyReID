@@ -16,16 +16,13 @@ import itertools
 from package.dataset import Dataset
 from sklearn.externals.joblib import Parallel, delayed
 
-
-__author__ = 'luigolas'
-
 # For big improvements in multiprocesing
 probeX = None
 galleryY = None
 probeXtest = None
-# probeXtrain = None
+probeXtrain = None
 galleryYtest = None
-# galleryYtrain = None
+galleryYtrain = None
 
 
 class Execution():
@@ -99,9 +96,7 @@ class Execution():
         return name
 
     def run(self):
-        global probeX, galleryY, probeXtest, galleryYtest
-        probeX = []
-        galleryY = []
+        global probeX, galleryY, probeXtest, galleryYtest, probeXtrain, galleryYtrain
 
         self._check_initialization()
 
@@ -115,9 +110,10 @@ class Execution():
         print("Tranforming Dataset")
         self._transform_dataset()
 
+        if self.dataset.train_indexes is not None:
+            probeXtrain = probeX[self.dataset.train_indexes]
+            galleryYtrain = galleryY[self.dataset.train_indexes]
         if self.dataset.test_indexes is not None:
-            # probeXtrain = probeX[self.dataset.train_indexes]
-            # galleryYtrain = galleryY[self.dataset.train_indexes]
             probeXtest = probeX[self.dataset.test_indexes]
             galleryYtest = galleryY[self.dataset.test_indexes]
 
@@ -129,12 +125,8 @@ class Execution():
         print("Calculating Ranking Matrix")
         self._calc_ranking_matrix()
 
-        probeX = None
-        galleryY = None
-        probeXtest = None
-        galleryYtest = None
-
     def unload(self):
+        global probeX, galleryY, probeXtest, galleryYtest
         self.dataset.unload()
         del self.dataset
         self.comparator.weigths = None
@@ -146,6 +138,10 @@ class Execution():
         del self.segmenter
         del self.comparison_matrix
         del self.ranking_matrix
+        probeX = None
+        galleryY = None
+        probeXtest = None
+        galleryYtest = None
 
     def _check_initialization(self):
         if self.dataset.probe is None:

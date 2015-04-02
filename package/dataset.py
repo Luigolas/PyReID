@@ -1,4 +1,4 @@
-from sklearn.cross_validation import ShuffleSplit
+from sklearn.cross_validation import ShuffleSplit, _validate_shuffle_split
 
 __author__ = 'luigolas'
 
@@ -86,12 +86,11 @@ class Dataset(object):
             raise ValueError("set must be None, \"train\" or \"test\"")
         return self.same_individual(probe_name, gallery_name)
 
-
     def calc_masks(self, segmenter):
         self.probe.calc_masks(segmenter)
         self.gallery.calc_masks(segmenter)
 
-    def generate_train_set(self, train_size=20):
+    def generate_train_set(self, train_size=20, test_size=None):
         """
 
         :param train_size: float or int (default=20)
@@ -101,12 +100,11 @@ class Dataset(object):
         :return:
         """
         total_len = self.probe.len  # Assumes same gallery and probe size
-        if type(train_size) == float:
-            train_size = round(total_len * train_size)
+        train_size, test_size = _validate_shuffle_split(total_len, test_size, train_size)  # Makes sure values are valid
         generator = np.random.RandomState()
         reordered = generator.permutation(total_len)
-        self.train_indexes = reordered[:train_size]
-        self.test_indexes = reordered[train_size:]
+        self.train_indexes = reordered[:train_size]  # Take the first ones
+        self.test_indexes = reordered[-test_size:]  # Take the last ones
 
     def unload(self):
         self.probe.images = None

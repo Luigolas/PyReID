@@ -1,3 +1,5 @@
+from package.post_ranker import PostRankOptimization
+
 __author__ = 'luigolas'
 
 from package.dataset import Dataset
@@ -24,6 +26,7 @@ class Configuration():
     def __init__(self):
         self.executions = []
         self.statistics = []
+        self.post_rankers = []
         # self._stats_comparative = []
         self.dataframe = None
 
@@ -39,13 +42,19 @@ class Configuration():
         else:
             raise TypeError("Must be a Statistics object")
 
+    def add_post_ranker(self, post_ranker):
+        if isinstance(post_ranker, PostRankOptimization):
+            self.post_rankers.append(post_ranker)
+        else:
+            raise TypeError("Must be a PostRankOptimization object")
+
     # def set_statistics_comparative(self, rangeX_comp=True):
     #     if rangeX_comp:
     #         self._stats_comparative.append(self._rangeX_comparative)
 
     def add_execs_grabcut_btf_histograms(self, probe, gallery, id_regex=None, segmenter_iter=None, masks=None,
                                      colorspaces=None, binss=None, regions=None, region_name=None, weights=None,
-                                     dimensions=None, compmethods=None, preprocessing=None, train_split=None):
+                                     dimensions=None, compmethods=None, preprocessing=None, train_test_split=None):
         """
 
         :param probe:
@@ -78,16 +87,16 @@ class Configuration():
             for r in range(*binss):
                 binss_temp.append([r, r, r])
             binss = binss_temp
-        if train_split is None:
-            train_split = [20]
-        elif type(train_split) != list:
-            train_split = [train_split]
+        if train_test_split is None:
+            train_test_split = [[10, None]]
+        # elif type(train_test_split) != list:
+        #     train_test_split = [train_test_split]
 
         for gc_iter, mask, colorspace, bins, dimension, method, preproc, split in itertools.product(
-                segmenter_iter, masks, colorspaces, binss, dimensions, compmethods, preprocessing, train_split):
+                segmenter_iter, masks, colorspaces, binss, dimensions, compmethods, preprocessing, train_test_split):
 
             ex = Execution(Dataset(probe, gallery), Grabcut(mask, gc_iter, CS_BGR), BTF(preproc))
-            ex.dataset.generate_train_set(split)
+            ex.dataset.generate_train_set(split[0], split[1])
 
             if id_regex:
                 ex.set_id_regex(id_regex)
@@ -118,11 +127,9 @@ class Configuration():
 
         self.dataframe = None
         self._check_initialization()
-        # val = 0
         total = len(self.executions)
         # time.sleep(5)
         for val, (execution, statistic) in enumerate(zip(self.executions, self.statistics)):
-            # val += 1
             print("******** Execution %d of %d ********" % (val + 1, total))
             execution.run()
             statistic.set_execution(execution)
@@ -135,6 +142,10 @@ class Configuration():
                 self.dataframe = self.dataframe.append(name, ignore_index=True)
             print(statistic.rangeX[0])
             print("")  # New line
+
+            if len(self.post_rankers) >= 0:  # TODO check same number of post_rankers, executions and statistics
+                self.post_rankers[val].run(execution)
+
             #Do some clean up
             execution.unload()
             execution = None
@@ -165,3 +176,5 @@ class Configuration():
         else:
             self.dataframe.to_excel(excel_writer=path, index=False, float_format='%.3f')
         # pd.DataFrame.to_excel(float_format="")
+
+

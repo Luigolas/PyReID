@@ -63,7 +63,7 @@ class ImageSet(object):
     @staticmethod
     def _valid_directory(folder_name):
         if not os.path.isdir(folder_name):
-            raise NotADirectoryError("Not a valid directory path:" + folder_name)
+            raise NotADirectoryError("Not a valid directory path: " + folder_name)
         if folder_name[-1] == '/':
             folder_name = folder_name[:-1]
         return folder_name

@@ -1,5 +1,5 @@
 import copy
-import package.app as app
+# import package.app as app
 import cv2
 import numpy as np
 from package.image import Image, CS_BGR
@@ -46,14 +46,14 @@ class Grabcut(Segmenter):
         if image.colorspace != self._colorspace:
             raise AttributeError("Image must be in BGR color space")
 
-        if app.DB:
-            try:
-                mask = app.DB[self.dbname(image.imgname)]
-                # print("returning mask for " + imgname + " [0][0:5]: " + str(mask[4][10:25]))
-                return mask
-            except FileNotFoundError:
-                # Not in DataBase, continue calculating
-                pass
+        # if app.DB:
+        #     try:
+        #         mask = app.DB[self.dbname(image.imgname)]
+        #         # print("returning mask for " + imgname + " [0][0:5]: " + str(mask[4][10:25]))
+        #         return mask
+        #     except FileNotFoundError:
+        #         # Not in DataBase, continue calculating
+        #         pass
 
         bgdmodel = np.zeros((1, 65), np.float64)
         fgdmodel = np.zeros((1, 65), np.float64)
@@ -63,8 +63,8 @@ class Grabcut(Segmenter):
 
         mask = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
 
-        if app.DB:
-            app.DB[self.dbname(image.imgname)] = mask
+        # if app.DB:
+        #     app.DB[self.dbname(image.imgname)] = mask
 
         return mask
 

@@ -1,17 +1,14 @@
 __author__ = 'luigolas'
-import itertools
+
 import math
-import cv2
-import time
+# import time
 from package.utilities import InitializationError
-from package.image_set import ImageSet
-import package.app as app
-import re
+# import re
 import numpy as np
-import package.image as image
+# import package.image as image
 # import package.evaluator as evaluator
 # from memory_profiler import profile
-import itertools
+# import itertools
 from package.dataset import Dataset
 from sklearn.externals.joblib import Parallel, delayed
 
@@ -117,7 +114,7 @@ class Execution():
 
         # if self.dataset.probe.masks is None or self.dataset.gallery.masks is None:
         print("Calculating Masks")  # TODO: Add option for not segmenting
-        self._calc_masks(1)
+        self._calc_masks(-1)
 
         print("Preprocessing")  # Requires Masks already calculated
         self._preprocess()
@@ -127,11 +124,13 @@ class Execution():
 
         # Calculate Comparison matrix
         print("Calculating Comparison Matrix")
-        self._calc_comparison_matrix(1)
+        self._calc_comparison_matrix(-1)
 
         # Calculate Ranking matrix
         print("Calculating Ranking Matrix")
         self._calc_ranking_matrix()
+
+        print("Execution Finished")
 
     def unload(self):
         global probeX, galleryY, probeXtest, galleryYtest
@@ -227,13 +226,13 @@ class Execution():
         # noinspection PyTypeChecker
         if self.comparator.method == Comparator.HISTCMP_CORRE or self.comparator.method == Comparator.HISTCMP_INTERSECT:
             # The biggest value, the better
-            self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)[:, ::-1].astype(np.int16)
+            self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)[:, ::-1].astype(np.uint16)
             # Reverse order by axis 1
 
             # self.ranking_matrix = np.argsort(self.comparison_matrix[:, ::-1])
         else:  # The lower value, the better
             # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
-            self.ranking_matrix = np.argsort(self.comparison_matrix).astype(np.int16)
+            self.ranking_matrix = np.argsort(self.comparison_matrix).astype(np.uint16)
             # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
 
 

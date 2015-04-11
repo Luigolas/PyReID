@@ -11,60 +11,55 @@ import package.execution as execution
 
 class PostRankOptimization(object):
     def __init__(self):
-        self.visual_expansion = RandomForestRegressor(n_estimators=10, min_samples_leaf=5, n_jobs=-1)  # As in POP
-        self.probe_selected_index = None
+        self.subject = -1  # The order of the person to be Re-identified by the user (Initially -1)
+        self.probe_name = ""
+        self.probe_selected_index = -1
         self.probe_selected = None  # Already feature extracted
+        self.target_position = 0
+        self.iteration = 0
         self.strong_negatives = []
         self.weak_negatives = []
         self.visual_expanded = []
+        self.new_strong_negatives = []
+        self.new_weak_negatives = []
+        self.new_visual_expanded = []
+        self.visual_expansion = RandomForestRegressor(n_estimators=20, min_samples_leaf=5, n_jobs=-1)  # As in POP
         self.cluster_forest = RandomTreesEmbedding(n_estimators=20, min_samples_leaf=1, n_jobs=-1)  # As in POP
         self.affinity_matrix = None
+        self.leaf_indexes = None
         self.affinity_graph = None
-        self.iteration = 0
         self.execution = None
-        self.subject = 0  # The number of person Re-identified by the user
         self.rank_list = None
         self.comp_list = None
 
-    def run(self, ex):
+    def set_ex(self, ex):
         self.execution = ex
         self.initial_iteration()
-        while self.subject < self.execution.dataset.test_size:
-            self.probe_selected = execution.probeXtest[self.subject]
-            self.rank_list = self.execution.ranking_matrix[self.subject]
-            self.comp_list = self.execution.comparison_matrix[self.subject]
-            for iteration in range(10):
-                print("Iteration %d" % iteration)
-                # Find position of target
-                for column, elemg in enumerate(self.rank_list):
-                    if self.execution.dataset.same_individual_by_id(self.subject, elemg, set="test"):
-                        target_position = column  # TODO: If not multiview we could exit loop here
-                        print("Target at %d position" % target_position)
-                        break
 
-                self.collage("temp.jpg")
-                temp = input('Strong negatives')
-                self.strong_negatives.extend(self.rank_list[temp])
-                # print temp, rank_list, self.strong_negatives
-                temp = input('Weak negatives')
-                self.weak_negatives.extend(self.rank_list[temp])
-                self.iterate()
+    def new_samples(self, weak_negatives_index, strong_negatives_index):
+        self.new_weak_negatives = [e for e in self.rank_list[weak_negatives_index] if e not in self.weak_negatives]
+        self.new_strong_negatives = [e for e in self.rank_list[strong_negatives_index] if e not in self.strong_negatives]
+
+    # def run(self):
+    #     if not self.execution:
+    #         raise InitializationError("PostRankOptimization must have an execution assigned")
+    #     self.iterate()
 
     def _generate_visual_expansion(self):
         n_estimators = self.visual_expansion.get_params()['n_estimators']
-        selected_len = round(n_estimators * (2 / 3))
+        selected_len = round(float(n_estimators) * (2 / 3.))
         selected = np.random.RandomState()
         selected = selected.permutation(n_estimators)
         selected = selected[:selected_len]
-        expansion = np.empty_like(self.probe_selected)
+        expansion = np.zeros_like(self.probe_selected)
         for i in selected:
-            expansion += self.visual_expansion[i].predict(self.probe_selected)
+            expansion += self.visual_expansion[i].predict(self.probe_selected).flatten()
         expansion /= float(selected_len)
         return expansion
 
     def calc_affinity_matrix(self, X):
         # TODO Add visual expanded elements
-        leaf_indexes = self.cluster_forest.apply(X)
+        self.leaf_indexes = self.cluster_forest.apply(X)
         n_estimators = self.cluster_forest.get_params()['n_estimators']
         affinity = np.empty((X.shape[0], X.shape[0]), np.uint16)
         # np.append(affinity, [[7, 8, 9]], axis=0)  # To add more rows later (visual expanded)
@@ -72,27 +67,52 @@ class PostRankOptimization(object):
         for i in np.ndindex(affinity.shape):
             if i[0] >= i[1]:  # Already calculated (symmetric matrix)
                 continue
-            affinity[i] = np.sum(leaf_indexes[i[0]] == leaf_indexes[i[1]])
+            affinity[i] = np.sum(self.leaf_indexes[i[0]] == self.leaf_indexes[i[1]])
             affinity[i[::-1]] = affinity[i]  # Symmetric value
 
         return affinity
 
+    def new_subject(self):
+        if self.subject < self.execution.dataset.test_size:
+            self.subject += 1
+            self.probe_name = self.execution.dataset.probe.files_test[self.subject]
+            self.probe_name = "/".join(self.probe_name.split("/")[-2:])
+            self.probe_selected = execution.probeXtest[self.subject]
+            self.rank_list = self.execution.ranking_matrix[self.subject].copy()
+            self.comp_list = self.execution.comparison_matrix[self.subject].copy()
+            self._calc_target_position()
+            self.iteration = 0
+            self.strong_negatives = []
+            self.weak_negatives = []
+            self.visual_expanded = []
+
     def initial_iteration(self):
+        self.new_subject()
         self.visual_expansion.fit(execution.probeXtrain, execution.galleryYtrain)
         self.cluster_forest.fit(execution.galleryYtest)
         self.affinity_matrix = self.calc_affinity_matrix(execution.galleryYtest)
         # TODO Affinity graph ??
 
     def iterate(self):
-        to_expand_len = len(self.strong_negatives) - len(self.weak_negatives)
+        self.iteration += 1
+        print("Iteration %d" % self.iteration)
+        to_expand_len = len(self.new_strong_negatives) - len(self.new_weak_negatives)
         if to_expand_len < 0:
             raise InitializationError("There cannot be more weak negatives than strong negatives")
 
         for i in range(to_expand_len):
-            self.visual_expanded.append(self._generate_visual_expansion())
-        # TODO See what to do with visual expanded
+            self.new_visual_expanded.append(self._generate_visual_expansion())
 
         self.reorder()
+
+        self._calc_target_position()
+
+        self.strong_negatives.extend(self.new_strong_negatives)
+        self.weak_negatives.extend(self.new_weak_negatives)
+        self.visual_expanded.extend(self.new_visual_expanded)
+        self.new_strong_negatives = []
+        self.new_weak_negatives = []
+        self.new_visual_expanded = []
 
     def collage(self, name, cols=5, size=20, min_gap_size=5):
         """
@@ -113,7 +133,7 @@ class PostRankOptimization(object):
         cv2.putText(img, "Probe", (10, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, 255, 1)
         imgs.append(img)
 
-        elements = self.execution.ranking_matrix[self.subject]
+        elements = self.rank_list.copy()
 
         # Open imgs and save in list
         size = min(len(elements), (size - 1))
@@ -153,18 +173,35 @@ class PostRankOptimization(object):
 
         cv2.imwrite(name, result)
         cv2.imshow("tal", result)
+        cv2.waitKey(1)
 
     def reorder(self):
-        for sn in self.strong_negatives:
+        for sn in self.new_strong_negatives:
             for elem, (comp_value, affinity) in enumerate(zip(self.comp_list, self.affinity_matrix[sn])):
                 n_estimators = self.cluster_forest.get_params()['n_estimators']
-                affinity = (float(affinity) / n_estimators) * 0.5
+                affinity = (float(affinity) / n_estimators) * 0.2
                 self.comp_list[elem] += comp_value * affinity
 
-        for wn in self.weak_negatives:
+        for wn in self.new_weak_negatives:
             for elem, (comp_value, affinity) in enumerate(zip(self.comp_list, self.affinity_matrix[wn])):
                 n_estimators = self.cluster_forest.get_params()['n_estimators']
-                affinity = (float(affinity) / n_estimators) * 0.5
+                affinity = (float(affinity) / n_estimators) * 0.2
                 self.comp_list[elem] -= comp_value * affinity
 
-        self.rank_list = np.argsort(self.comp_list).astype(np.int16)
+        for ve in self.new_visual_expanded:
+            ve_cluster_value = self.cluster_forest.apply(ve)
+            for elem, comp_value in enumerate(self.comp_list):
+                elem_cluster_value = self.leaf_indexes[elem]
+                n_estimators = self.cluster_forest.get_params()['n_estimators']
+                affinity = np.sum(ve_cluster_value == elem_cluster_value)
+                affinity = (float(affinity) / n_estimators) * 0.2
+                self.comp_list[elem] -= comp_value * affinity
+
+        self.rank_list = np.argsort(self.comp_list).astype(np.uint16)
+
+    def _calc_target_position(self):
+        for column, elemg in enumerate(self.rank_list):
+            if self.execution.dataset.same_individual_by_id(self.subject, elemg, set="test"):
+                target_position = column  # TODO: If not multiview we could exit loop here
+                self.target_position = target_position
+                break

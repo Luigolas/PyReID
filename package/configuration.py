@@ -42,11 +42,11 @@ class Configuration():
         else:
             raise TypeError("Must be a Statistics object")
 
-    def add_post_ranker(self, post_ranker):
-        if isinstance(post_ranker, PostRankOptimization):
-            self.post_rankers.append(post_ranker)
-        else:
-            raise TypeError("Must be a PostRankOptimization object")
+    # def add_post_ranker(self, post_ranker):
+    #     if isinstance(post_ranker, PostRankOptimization):
+    #         self.post_rankers.append(post_ranker)
+    #     else:
+    #         raise TypeError("Must be a PostRankOptimization object")
 
     # def set_statistics_comparative(self, rangeX_comp=True):
     #     if rangeX_comp:
@@ -135,19 +135,19 @@ class Configuration():
         for val, (execution, statistic) in enumerate(zip(self.executions, self.statistics)):
             print("******** Execution %d of %d ********" % (val + 1, total))
             execution.run()
-            # statistic.set_execution(execution)
-            # print("Calculating Statistics")
-            # statistic.run()
-            # name = statistic.dict_name()
-            # if self.dataframe is None:
-            #     self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
-            # else:
-            #     self.dataframe = self.dataframe.append(name, ignore_index=True)
-            # print(statistic.rangeX[0])
-            # print("")  # New line
+            statistic.set_execution(execution)
+            print("Calculating Statistics")
+            statistic.run()
+            name = statistic.dict_name()
+            if self.dataframe is None:
+                self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
+            else:
+                self.dataframe = self.dataframe.append(name, ignore_index=True)
+            print(statistic.rangeX[0])
+            print("")  # New line
 
-            if len(self.post_rankers) > 0:  # TODO check same number of post_rankers, executions and statistics
-                self.post_rankers[val].run(execution)
+            # if len(self.post_rankers) > 0:  # TODO check same number of post_rankers, executions and statistics
+            #     self.post_rankers[val].run(execution)
 
             #Do some clean up
             execution.unload()
@@ -157,14 +157,15 @@ class Configuration():
             gc.collect()
 
     def _check_initialization(self):
-        if not self.executions or not self.statistics:
+        if not self.executions:
             raise InitializationError
-        if len(self.executions) != len(self.statistics):
-            if len(self.statistics) != 1:
-                raise InitializationError
-            else:
-                for i in range(1, len(self.executions)):
-                    self.statistics.append(copy.copy(self.statistics[0]))
+        if self.statistics:
+            if len(self.executions) != len(self.statistics):
+                if len(self.statistics) != 1:
+                    raise InitializationError
+                else:
+                    for i in range(1, len(self.executions)):
+                        self.statistics.append(copy.copy(self.statistics[0]))
 
     def to_csv(self, path):
         self.dataframe.to_csv(path_or_buf=path, index=False, sep="\t", float_format='%.3f')

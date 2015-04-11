@@ -3,7 +3,7 @@ __author__ = 'luigolas'
 import numpy as np
 import cv2
 from package.utilities import safe_ln, FileNotFoundError
-import package.app as app
+# from package.app import DB
 
 CS_IIP = 1
 CS_BGR = 2
@@ -110,15 +110,15 @@ class Image(np.ndarray):
         :return:
         """
         # Attempt to load from DB
-        try:
-            if app.DB:
-                img = app.DB[self.dbname(colorspace)]
-                img = Image(img, colorspace)
-                img.imgname = self.imgname
-                return img
-        except FileNotFoundError:
-            #Not in DataBase, continue calculating
-            pass
+        # try:
+        #     if DB:
+        #         img = DB[self.dbname(colorspace)]
+        #         img = Image(img, colorspace)
+        #         img.imgname = self.imgname
+        #         return img
+        # except FileNotFoundError:
+        #     #Not in DataBase, continue calculating
+        #     pass
         img = None
         if self.colorspace == CS_BGR:
             if colorspace == CS_IIP:
@@ -127,8 +127,8 @@ class Image(np.ndarray):
                 img = self._bgr2hsv()
         img.imgname = self.imgname
         #Save in Connection
-        if app.DB:
-            app.DB[img.dbname()] = img
+        # if DB:
+        #     DB[img.dbname()] = img
         return img
 
     def dbname(self, colorspace=None):

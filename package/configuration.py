@@ -144,10 +144,7 @@ class Configuration():
             else:
                 self.dataframe = self.dataframe.append(name, ignore_index=True)
             print(statistic.rangeX[0])
-            print("")  # New line
-
-            # if len(self.post_rankers) > 0:  # TODO check same number of post_rankers, executions and statistics
-            #     self.post_rankers[val].run(execution)
+            print("")  # New lineTL
 
             #Do some clean up
             execution.unload()

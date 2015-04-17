@@ -10,10 +10,10 @@ import package.execution as execution
 
 
 class PostRankOptimization(object):
-    def __init__(self):
+    def __init__(self, balanced=False, visual_expansion_use=True, re_score_alpha=0.15,
+                 re_score_method_proportional=True):
         self.subject = -1  # The order of the person to be Re-identified by the user (Initially -1)
         self.probe_name = ""
-        self.probe_selected_index = -1
         self.probe_selected = None  # Already feature extracted
         self.target_position = 0
         self.iteration = 0
@@ -27,10 +27,17 @@ class PostRankOptimization(object):
         self.cluster_forest = RandomTreesEmbedding(n_estimators=20, min_samples_leaf=1, n_jobs=-1)  # As in POP
         self.affinity_matrix = None
         self.leaf_indexes = None
-        self.affinity_graph = None
+        # self.affinity_graph = None
         self.execution = None
         self.rank_list = None
         self.comp_list = None
+        self.balanced = balanced
+        if not balanced:
+            self.use_visual_expansion = False
+        else:
+            self.use_visual_expansion = visual_expansion_use
+        self.re_score_alpha = re_score_alpha
+        self.re_score_method_proportional = re_score_method_proportional
 
     def set_ex(self, ex):
         self.execution = ex
@@ -38,12 +45,8 @@ class PostRankOptimization(object):
 
     def new_samples(self, weak_negatives_index, strong_negatives_index):
         self.new_weak_negatives = [e for e in self.rank_list[weak_negatives_index] if e not in self.weak_negatives]
-        self.new_strong_negatives = [e for e in self.rank_list[strong_negatives_index] if e not in self.strong_negatives]
-
-    # def run(self):
-    #     if not self.execution:
-    #         raise InitializationError("PostRankOptimization must have an execution assigned")
-    #     self.iterate()
+        self.new_strong_negatives = [e for e in self.rank_list[strong_negatives_index] if
+                                     e not in self.strong_negatives]
 
     def _generate_visual_expansion(self):
         n_estimators = self.visual_expansion.get_params()['n_estimators']
@@ -58,7 +61,7 @@ class PostRankOptimization(object):
         return expansion
 
     def calc_affinity_matrix(self, X):
-        # TODO Add visual expanded elements
+        # TODO Add visual expanded elements?
         self.leaf_indexes = self.cluster_forest.apply(X)
         n_estimators = self.cluster_forest.get_params()['n_estimators']
         affinity = np.empty((X.shape[0], X.shape[0]), np.uint16)
@@ -85,10 +88,13 @@ class PostRankOptimization(object):
             self.strong_negatives = []
             self.weak_negatives = []
             self.visual_expanded = []
+        else:
+            return  # TODO Control situation
 
     def initial_iteration(self):
         self.new_subject()
-        self.visual_expansion.fit(execution.probeXtrain, execution.galleryYtrain)
+        if self.use_visual_expansion:
+            self.visual_expansion.fit(execution.probeXtrain, execution.galleryYtrain)
         self.cluster_forest.fit(execution.galleryYtest)
         self.affinity_matrix = self.calc_affinity_matrix(execution.galleryYtest)
         # TODO Affinity graph ??
@@ -97,11 +103,14 @@ class PostRankOptimization(object):
         self.iteration += 1
         print("Iteration %d" % self.iteration)
         to_expand_len = len(self.new_strong_negatives) - len(self.new_weak_negatives)
-        if to_expand_len < 0:
-            raise InitializationError("There cannot be more weak negatives than strong negatives")
+        if self.balanced:
+            if to_expand_len < 0:
+                return "There cannot be more weak negatives than strong negatives"
+            elif to_expand_len > 0 and not self.use_visual_expansion:
+                return "There must be the same number of weak negatives and strong negatives"
 
-        for i in range(to_expand_len):
-            self.new_visual_expanded.append(self._generate_visual_expansion())
+            for i in range(to_expand_len):
+                self.new_visual_expanded.append(self._generate_visual_expansion())
 
         self.reorder()
 
@@ -113,6 +122,7 @@ class PostRankOptimization(object):
         self.new_strong_negatives = []
         self.new_weak_negatives = []
         self.new_visual_expanded = []
+        return "OK"
 
     def collage(self, name, cols=5, size=20, min_gap_size=5):
         """
@@ -165,7 +175,7 @@ class PostRankOptimization(object):
         for y in range(rows):
             for x in range(cols):
                 result[current_height:current_height + imgs[i].shape[0],
-                       current_width:current_width + imgs[i].shape[1]] = imgs[i]
+                current_width:current_width + imgs[i].shape[1]] = imgs[i]
                 i += 1
                 current_width += max_width + min_gap_size
             current_width = 0
@@ -176,28 +186,7 @@ class PostRankOptimization(object):
         cv2.waitKey(1)
 
     def reorder(self):
-        for sn in self.new_strong_negatives:
-            for elem, (comp_value, affinity) in enumerate(zip(self.comp_list, self.affinity_matrix[sn])):
-                n_estimators = self.cluster_forest.get_params()['n_estimators']
-                affinity = (float(affinity) / n_estimators) * 0.2
-                self.comp_list[elem] += comp_value * affinity
-
-        for wn in self.new_weak_negatives:
-            for elem, (comp_value, affinity) in enumerate(zip(self.comp_list, self.affinity_matrix[wn])):
-                n_estimators = self.cluster_forest.get_params()['n_estimators']
-                affinity = (float(affinity) / n_estimators) * 0.2
-                self.comp_list[elem] -= comp_value * affinity
-
-        for ve in self.new_visual_expanded:
-            ve_cluster_value = self.cluster_forest.apply(ve)
-            for elem, comp_value in enumerate(self.comp_list):
-                elem_cluster_value = self.leaf_indexes[elem]
-                n_estimators = self.cluster_forest.get_params()['n_estimators']
-                affinity = np.sum(ve_cluster_value == elem_cluster_value)
-                affinity = (float(affinity) / n_estimators) * 0.2
-                self.comp_list[elem] -= comp_value * affinity
-
-        self.rank_list = np.argsort(self.comp_list).astype(np.uint16)
+        raise NotImplementedError("Please Implement reorder method")
 
     def _calc_target_position(self):
         for column, elemg in enumerate(self.rank_list):
@@ -205,3 +194,53 @@ class PostRankOptimization(object):
                 target_position = column  # TODO: If not multiview we could exit loop here
                 self.target_position = target_position
                 break
+
+
+class SAA(PostRankOptimization):
+    def re_score(self, sign, elem, comp_with_probe, affinity, elem2_fe):
+        """
+        comp_with_probe, affinity and similarity must be normalized (0..1)
+        Similarity: The lowest value, the more similar (lowest distance)
+        :param sign:
+        :param elem:
+        :param comp_with_probe: The lowest value, the more similar (lowest distance)
+        :param affinity: The higher value, the more affinity
+        :param elem2_fe:
+        :return:
+        """
+        similarity = self.execution.comparator.compare(elem2_fe, execution.galleryYtest[elem])
+        increment = sign * self.re_score_alpha
+        if self.re_score_method_proportional:
+            self.comp_list[elem] = comp_with_probe + (increment * comp_with_probe *
+                                                      (0.5 * affinity + 0.5 * (1 - similarity)))
+        else:
+            # self.comp_list[elem] = ((1 - self.re_score_alpha) * comp_with_probe) + \
+            #                        (sign * affinity * self.re_score_alpha)
+            self.comp_list[elem] = ((1 - self.re_score_alpha) * comp_with_probe) + \
+                                   (increment * (0.5 * affinity + 0.5 * (1 - similarity)))
+
+    def reorder(self):
+        for sn in self.new_strong_negatives:
+            for elem, (comp_with_probe, affinity) in enumerate(zip(self.comp_list, self.affinity_matrix[sn])):
+                n_estimators = self.cluster_forest.get_params()['n_estimators']
+                affinity = float(affinity) / n_estimators
+                self.re_score(+1, elem, comp_with_probe, affinity, execution.galleryYtest[sn])
+
+        for wn in self.new_weak_negatives:
+            for elem, (comp_with_probe, affinity) in enumerate(zip(self.comp_list, self.affinity_matrix[wn])):
+                n_estimators = self.cluster_forest.get_params()['n_estimators']
+                affinity = float(affinity) / n_estimators
+                self.re_score(-1, elem, comp_with_probe, affinity, execution.galleryYtest[wn])
+
+        for ve in self.new_visual_expanded:
+            ve_cluster_value = self.cluster_forest.apply(ve)
+            for elem, comp_with_probe in enumerate(self.comp_list):
+                elem_cluster_value = self.leaf_indexes[elem]
+                n_estimators = self.cluster_forest.get_params()['n_estimators']
+                affinity = np.sum(ve_cluster_value == elem_cluster_value)
+                affinity = float(affinity) / n_estimators
+                self.re_score(-1, elem, comp_with_probe, affinity, ve)
+
+        self.rank_list = np.argsort(self.comp_list).astype(np.uint16)
+
+

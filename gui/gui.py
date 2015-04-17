@@ -60,12 +60,13 @@ class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):
     def custom_setup(self):
         self.labelSolution.setText("")
 
-    def addImage(self, image_path):
+    def addImage(self, image_path, enabled=True):
         # self.ui.ImagesContainer.addItem(QtGui.QListWidgetItem(QtGui.QIcon(image_path), "0"))
         img = QtImage(image_path)
 
-        item = QtGui.QListWidgetItem("salpica")
+        item = QtGui.QListWidgetItem("Selected")
         item.setSizeHint(img.sizeHint())
+        img.setEnabled(enabled)
 
         self.ImagesContainer.addItem(item)
         self.ImagesContainer.setItemWidget(item, img)
@@ -83,9 +84,14 @@ class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):
         self.labelProbeNumber.setText("Probe %d of %d" % (post_ranker.subject, post_ranker.execution.dataset.test_size))
         self.ImagesContainer.clear()
         for elem in post_ranker.rank_list:
-            self.addImage(post_ranker.execution.dataset.gallery.files_test[elem])
+            if elem in post_ranker.strong_negatives or elem in post_ranker.weak_negatives:
+                enabled = False
+            else:
+                enabled = True
+            self.addImage(post_ranker.execution.dataset.gallery.files_test[elem], enabled)
         if post_ranker.iteration > 0:
             self.labelSolution.hide()
+        self.labelErrorMessage.hide()
 
     def next_iteration(self):
         strong_negatives = []
@@ -100,6 +106,9 @@ class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):
                     weak_negatives.append(index)
                 else:
                     strong_negatives.append(index)
+        if len(strong_negatives) == 0 and len(weak_negatives) == 0:
+            self.printError("You need to select at least one weak negative or strong negative")
+            return
         from package.app import iterate_images_selection
         iterate_images_selection(strong_negatives, weak_negatives)
 
@@ -132,6 +141,11 @@ class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):
     def next_probe():
         from package.app import new_probe
         new_probe()
+
+    def printError(self, msg):
+        self.labelErrorMessage.setText(msg)
+        self.labelErrorMessage.setStyleSheet("QLabel { color : red; }")
+        self.labelErrorMessage.show()
 
 
 class NiceRubberBand(QtGui.QRubberBand):

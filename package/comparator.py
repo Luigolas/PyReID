@@ -41,16 +41,16 @@ class CompHistograms(Comparator):
         self.name = method_names[self.method]
         self.dict_name = {"Comparator": method_names[self.method]}
 
-    def compare_by_index(self, hists1index, hists2index):
-        """
-        Look for values at global values (probeX and galleryY in package.execution
-        :param hists1index:
-        :param hists2index:
-        :return:
-        """
-        hists1 = execution.probeX[hists1index]
-        hists2 = execution.galleryY[hists2index]
-        return self.compare(hists1, hists2)
+    # def compare_by_test_index(self, hists1index, hists2index):
+    #     """
+    #     Look for values at global values (probeXtest and galleryYtest in package.execution)
+    #     :param hists1index:
+    #     :param hists2index:
+    #     :return:
+    #     """
+    #     hists1 = execution.probeXtest[hists1index]
+    #     hists2 = execution.galleryYtest[hists2index]
+    #     return self.compare(hists1, hists2)
 
     def compare(self, hists1, hists2):
         """

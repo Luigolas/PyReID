@@ -1,3 +1,5 @@
+import sys
+
 __author__ = 'luigolas'
 
 import math
@@ -107,6 +109,11 @@ class Execution():
     def run(self):
         global probeX, galleryY, probeXtest, galleryYtest, probeXtrain, galleryYtrain
 
+        if sys.gettrace() is None:
+            multiprocessing = -1
+        else:
+            multiprocessing = 1
+
         self._check_initialization()
 
         print("Loading dataset images")
@@ -114,7 +121,7 @@ class Execution():
 
         # if self.dataset.probe.masks is None or self.dataset.gallery.masks is None:
         print("Calculating Masks")  # TODO: Add option for not segmenting
-        self._calc_masks(-1)
+        self._calc_masks(multiprocessing)
 
         print("Preprocessing")  # Requires Masks already calculated
         self._preprocess()
@@ -124,7 +131,7 @@ class Execution():
 
         # Calculate Comparison matrix
         print("Calculating Comparison Matrix")
-        self._calc_comparison_matrix(-1)
+        self._calc_comparison_matrix(multiprocessing)
 
         # Calculate Ranking matrix
         print("Calculating Ranking Matrix")
@@ -204,13 +211,7 @@ class Execution():
     def _calc_comparison_matrix(self, n_jobs=-1):
         global probeXtest, galleryYtest
 
-        # if probeXtest is not None:
         args = ((elem1, elem2) for elem1 in probeXtest for elem2 in galleryYtest)
-        # else:
-        #     args = ((elem1, elem2) for elem1 in probeX for elem2 in galleryY)
-
-        # args = ((index1, index2) for index1 in range(self.dataset.probe.dataset_len)
-        # for index2 in range(self.dataset.gallery.dataset_len))
 
         results = Parallel(n_jobs)(delayed(_parallel_compare)(self.comparator, e1, e2) for e1, e2 in args)
 
@@ -218,8 +219,6 @@ class Execution():
 
         size = math.sqrt(self.comparison_matrix.shape[0])
         self.comparison_matrix.shape = (size, size)
-
-        # self.comparison_matrix.shape = (self.dataset.probe.dataset_len, self.dataset.gallery.dataset_len)
 
     def _calc_ranking_matrix(self):
         import package.comparator as Comparator
@@ -235,10 +234,10 @@ class Execution():
             self.ranking_matrix = np.argsort(self.comparison_matrix).astype(np.uint16)
             # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
 
-
-def paralyze(*args):
-    return args[0][0](*args[0][1:][0])
-    pass
+#
+# def paralyze(*args):
+#     return args[0][0](*args[0][1:][0])
+#     pass
 
 
 

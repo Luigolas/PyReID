@@ -103,7 +103,7 @@ class Image(np.ndarray):
             img = img.to_color_space(colorspace)
         return img
 
-    def to_color_space(self, colorspace):
+    def to_color_space(self, colorspace, normed=False):
         """
 
         :param colorspace:
@@ -124,8 +124,8 @@ class Image(np.ndarray):
             if colorspace == CS_IIP:
                 img = self._bgr2iip()
             elif colorspace == CS_HSV:
-                img = self._bgr2hsv()
-        img.imgname = self.imgname
+                img = self._bgr2hsv(normed)
+        # img.imgname = self.imgname
         #Save in Connection
         # if DB:
         #     DB[img.dbname()] = img
@@ -164,10 +164,18 @@ class Image(np.ndarray):
                 # element = (element - iip_min)/(iip_max - iip_min)  # Normalized to 0.0 ; 1.0
                 # element = np.around(element, decimals=6)  # Remove some "extreme" precision
                 img_iip[row_index][columm_index] = element
-        img_iip = Image(img_iip, CS_IIP)
+        img_iip = Image(img_iip, CS_IIP, self.imgname)
         return img_iip
 
-    def _bgr2hsv(self):
-        img = cv2.cvtColor(self, cv2.COLOR_BGR2HSV)
-        img = Image(img, CS_HSV)
+    def _bgr2hsv(self, normed=False):
+        if normed:
+            # Convert to CV_32F3 , floating point in range 0.0 , 1.0
+            imgf32 = np.float32(self)
+            imgf32 = imgf32 * 1.0 / 255
+            img = cv2.cvtColor(imgf32, cv2.COLOR_BGR2HSV)
+            img[:, :, 0] /= 360.
+        else:
+            img = cv2.cvtColor(self, cv2.COLOR_BGR2HSV)
+
+        img = Image(img, CS_HSV, self.imgname)
         return img

@@ -22,11 +22,6 @@ class ImageSet(object):
         self.files_train = None
         self.files_test = None
 
-    def __copy__(self):
-        # Allowing copy of Images
-        result = Image(self.copy(), self.colorspace, self.imgname)
-        return result
-
     # def calc_masks(self, segmenter):
     #     if self.images is None:
     #         self.load_images()
@@ -47,6 +42,10 @@ class ImageSet(object):
     def load_images(self):
         self.images_train = []
         self.images_test = []
+
+        if self.files_test is None:  # If not initialized
+            self.files_test = self.files
+            self.files_train = []
 
         for imname in self.files_train:
             self.images_train.append(Image.from_filename(imname))

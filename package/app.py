@@ -3,15 +3,13 @@ __author__ = 'luigolas'
 import sys
 from PyQt4 import QtGui
 import os
-import package.statistics as stats
 import package.segmenter as segmenter
 import package.preprocessing as preprocessing
 from package import feature_extractor
 from package.image import CS_HSV, CS_BGR, CS_IIP
 import package.execution as execution
 from package.dataset import Dataset
-from package.configuration import Configuration
-from package.post_ranker import PostRankOptimization
+from package.post_ranker import SAA
 import package.comparator as comparator
 from gui.gui import MainWindow, ImagesSelectionForm
 
@@ -87,16 +85,21 @@ def run_image_selection():
 
     ex = execution.Execution(Dataset(probe, gallery, train_split, test_split), grabcut, preproc, fe, comp)
 
-    #TODO statistic necesesary??
-    # stat = stats.Statistics(None, False, False, [5, 10, 20, 50])
-
-    # conf = Configuration()
-    # conf.add_execution(ex)
-    # conf.add_statistics(stat)
-    # conf.add_post_ranker(PostRankOptimization())
-
     ex.run()
-    POP = PostRankOptimization()
+
+    if appMainForm.radioButtonPOPBalancedAndVE.isChecked():
+        balanced = True
+        visual_expansion_use = True
+    elif appMainForm.radioButtonPOPBalanced.isChecked():
+        balanced = True
+        visual_expansion_use = False
+    else:
+        balanced = False
+        visual_expansion_use = False
+    re_score_alpha = appMainForm.ReScoreAlpha.value()
+    re_score_method_proportional = appMainForm.radioButtonReScoreProportional.isChecked()
+    POP = SAA(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
+              re_score_method_proportional=re_score_method_proportional)
     POP.set_ex(ex)
     appImagesForm.update(POP)
     appMainForm.hide()
@@ -109,8 +112,11 @@ def run_image_selection():
 def iterate_images_selection(strong_negatives, weak_negatives):
     global POP, appImagesForm
     POP.new_samples(weak_negatives, strong_negatives)
-    POP.iterate()
-    appImagesForm.update(POP)
+    msg = POP.iterate()
+    if msg == "OK":
+        appImagesForm.update(POP)
+    else:
+        appImagesForm.printError(msg)
 
 
 def mark_solution(solution):

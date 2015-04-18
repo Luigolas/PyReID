@@ -81,7 +81,7 @@ class Configuration():
         if not preprocessing:
             preprocessing = [None]
         if not binss:
-            binss = [[60, 60, 60]]
+            binss = [[32, 32, 32]]
         elif isinstance(binss, tuple):
             binss_temp = []
             for r in range(*binss):
@@ -104,9 +104,9 @@ class Configuration():
             if id_regex:
                 ex.set_id_regex(id_regex)
 
-            bin = bins[0:len(Histogram.channels[colorspace])]
+            # bin = bins[0:len(Histogram.color_channels[colorspace])]
             ex.set_feature_extractor(
-                Histogram(colorspace, bin, regions=regions, dimension=dimension, region_name=region_name))
+                Histogram(colorspace, bins, regions=regions, dimension=dimension, region_name=region_name))
 
             ex.set_comparator(comparator.CompHistograms(method, weights))
             self.executions.append(ex)

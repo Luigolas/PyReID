@@ -380,15 +380,15 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QSpinBox" name="spinBoxBins">
-                   <property name="minimum">
-                    <number>2</number>
+                  <widget class="QLineEdit" name="lineEditBins">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
                    </property>
-                   <property name="maximum">
-                    <number>256</number>
-                   </property>
-                   <property name="value">
-                    <number>32</number>
+                   <property name="text">
+                    <string>[32, 32, 4]</string>
                    </property>
                   </widget>
                  </item>

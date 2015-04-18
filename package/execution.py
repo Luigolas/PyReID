@@ -119,12 +119,13 @@ class Execution():
         print("Loading dataset images")
         self.dataset.load_images()
 
+        print("Preprocessing")  # Requires Masks already calculated for BTF!!!!
+        self._preprocess()
+
         # if self.dataset.probe.masks is None or self.dataset.gallery.masks is None:
         print("Calculating Masks")  # TODO: Add option for not segmenting
         self._calc_masks(multiprocessing)
 
-        print("Preprocessing")  # Requires Masks already calculated
-        self._preprocess()
 
         print("Tranforming Dataset")
         self._transform_dataset(1)

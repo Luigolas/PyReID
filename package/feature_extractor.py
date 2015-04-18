@@ -19,19 +19,21 @@ class FeatureExtractor(object):
 
 
 class Histogram(FeatureExtractor):
-    ranges = {CS_BGR: [0, 255, 0, 255, 0, 255],
+    color_ranges = {CS_BGR: [0, 256, 0, 256, 0, 256],
               CS_IIP: [80.86236, 140.3336, -17.9941, 18.1964, -73.6702, -42.93588],
               # CS_IIP: [iip_min, iip_max] * 3,
-              CS_HSV: [0, hsvmax[0], 0, hsvmax[1]]}
+              CS_HSV: [0, hsvmax[0], 0, hsvmax[1], 0, hsvmax[2]]}
+    #
+    # color_channels = {CS_BGR: [0, 1, 2],
+    #             CS_IIP: [0, 1, 2],
+    #             CS_HSV: [0, 1, 2]}
 
-    channels = {CS_BGR: [0, 1, 2],
-                CS_IIP: [0, 1, 2],
-                CS_HSV: [0, 1]}
-
-    def __init__(self, color_space, bins=32, regions=None, dimension="1D", region_name=None):
+    def __init__(self, color_space, bins=None, regions=None, dimension="1D", region_name=None):
         if color_space is None or not isinstance(color_space, int):
             raise AttributeError("Colorspace parameter must be valid")
         self._colorspace = color_space
+        if bins is None:
+            bins = 32
         if type(bins) == int:
             if color_space == CS_BGR:
                 bins = [bins] * 3
@@ -39,8 +41,13 @@ class Histogram(FeatureExtractor):
                 bins = [bins] * 2
             elif color_space == CS_IIP:
                 bins = [bins] * 3
-        if len(bins) != len(Histogram.channels[color_space]):
-            raise IndexError("Size of bins incorrect for colorspace " + str(color_space))
+        #
+        # elif 0 in bins:
+        #     index = bins.index(0)
+        #     self.color_channels =
+        # if len(bins) > len(Histogram.color_channels[color_space]):
+        #     raise IndexError("Size of bins incorrect for colorspace " + str(color_space))
+
         self._bins = bins
         self._regions = regions
         if not isinstance(dimension, str) or not (dimension == "1D" or dimension == "3D"):
@@ -90,18 +97,22 @@ class Histogram(FeatureExtractor):
         image = image[region[0]:region[1], :]
 
         if self._dimension == "3D":
-            hist = cv2.calcHist([image], Histogram.channels[image.colorspace],
-                                mask, self._bins, Histogram.ranges[image.colorspace])
+            # TODO fix for bin = 0
+            channels = list(range(len(self._bins)))
+            hist = cv2.calcHist([image], channels,
+                                mask, self._bins, Histogram.color_ranges[image.colorspace])
             hist = self.normalize_hist(hist, normalization)
         else:  # 1D case
             hist = []
-            for channel in Histogram.channels[image.colorspace]:
+            for channel, bin in enumerate(self._bins):
                 # print("1D")
+                if bin == 0:
+                    continue
                 h = cv2.calcHist([image], [channel],
-                                 mask, [self._bins[channel]],
-                                 Histogram.ranges[image.colorspace][channel*2:channel*2+2])
+                                 mask, [bin],
+                                 Histogram.color_ranges[image.colorspace][channel*2:channel*2+2])
                 # print("Append")
-                hist.append(self.normalize_hist(h, normalization))
+                hist.extend(self.normalize_hist(h, normalization))
                 # In 1D case it can't be converted to numpy array as it might have different dimension (bins) sizes
         return hist
 

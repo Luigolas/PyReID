@@ -8,6 +8,7 @@ from package.utilities import safe_ln, FileNotFoundError
 CS_IIP = 1
 CS_BGR = 2
 CS_HSV = 3
+CS_YCrCb = 4
 
 colorspace_name = ["", "IIP", "BGR", "HSV"]
 
@@ -27,7 +28,7 @@ iip_max = 140.333
 
 bgr2iipClip = 3  # Minimal value for RGB image before converting to IIP
 
-hsvmax = [179, 255, 255]
+hsvmax = [180, 256, 256]
 
 
 class Image(np.ndarray):
@@ -125,6 +126,14 @@ class Image(np.ndarray):
                 img = self._bgr2iip()
             elif colorspace == CS_HSV:
                 img = self._bgr2hsv(normed)
+            elif colorspace == CS_YCrCb:
+                img = self._bgr2YCrCb()
+        elif self.colorspace == CS_YCrCb:
+            if colorspace == CS_BGR:
+                img = self._YCrCb2bgr()
+        elif self.colorspace == CS_HSV:
+            if colorspace == CS_BGR:
+                img = self._hsv2bgr()
         # img.imgname = self.imgname
         #Save in Connection
         # if DB:
@@ -178,4 +187,19 @@ class Image(np.ndarray):
             img = cv2.cvtColor(self, cv2.COLOR_BGR2HSV)
 
         img = Image(img, CS_HSV, self.imgname)
+        return img
+
+    def _hsv2bgr(self, ):
+        img = cv2.cvtColor(self, cv2.COLOR_HSV2BGR)
+        img = Image(img, CS_BGR, self.imgname)
+        return img
+
+    def _bgr2YCrCb(self):
+        img = cv2.cvtColor(self, cv2.COLOR_BGR2YCrCb)
+        img = Image(img, CS_YCrCb, self.imgname)
+        return img
+
+    def _YCrCb2bgr(self):
+        img = cv2.cvtColor(self, cv2.COLOR_YCrCb2BGR)
+        img = Image(img, CS_BGR, self.imgname)
         return img

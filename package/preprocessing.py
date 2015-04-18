@@ -1,6 +1,8 @@
 import itertools
 import cv2
 from package import image
+from package.dataset import Dataset
+from package.image import CS_YCrCb, CS_HSV, CS_BGR
 
 __author__ = 'luigolas'
 
@@ -15,6 +17,9 @@ class Preprocessing(object):
 
     def convert_image(self, im):
         raise NotImplementedError("Please Implement convert_image method")
+
+    def dict_name(self):
+        return {"Preproc": self._method}
 
 
 class BTF(Preprocessing):
@@ -119,7 +124,7 @@ class BTF(Preprocessing):
 
     @staticmethod
     def _cummhist(ims, colorspace=image.CS_BGR, masks=None):
-        ranges = feature_extractor.Histogram.ranges[colorspace]
+        ranges = feature_extractor.Histogram.color_ranges[colorspace]
         bins = [int(b - a) + 1 for a, b in zip(ranges, ranges[1:])[::2]]  # http://stackoverflow.com/a/5394908/3337586
         ev = feature_extractor.Histogram(colorspace, bins=bins, dimension="1D")
 
@@ -134,7 +139,7 @@ class BTF(Preprocessing):
                  itertools.izip_longest(h, list(result), fillvalue=0)]  # Accumulate with previous histograms
 
         # Normalize each histogram
-        num_channels = len(feature_extractor.Histogram.channels[colorspace])
+        num_channels = len(feature_extractor.Histogram.color_channels[colorspace])
         h = np.asarray(h).reshape(num_channels, len(h) / num_channels)
         return np.asarray(
             [feature_extractor.Histogram.normalize_hist(h_channel.cumsum(), normalization=cv2.NORM_INF) for h_channel
@@ -150,3 +155,39 @@ class BTF(Preprocessing):
         imgname = im.imgname.split(".")
         imgname = ".".join(imgname[:-1]) + self._method + "." + imgname[-1]
         return image.Image(im_converted, colorspace=im.colorspace, imgname=imgname)
+
+
+class Illumination_Normalization(Preprocessing):
+    def __init__(self, color_space=CS_YCrCb):
+        self.color_space = color_space
+        if color_space == CS_HSV:
+            self.channel = 2
+        else:  # CS_YCrCb
+            self.channel = 0
+
+    def preprocess(self, dataset):
+        assert(type(dataset) == Dataset)
+        for index, im in enumerate(dataset.probe.images_test):
+            dataset.probe.images_test[index] = self.convert_image(im)
+
+        for index, im in enumerate(dataset.probe.images_train):
+            dataset.probe.images_train[index] = self.convert_image(im)
+
+        for index, im in enumerate(dataset.gallery.images_test):
+            dataset.gallery.images_test[index] = self.convert_image(im)
+
+        for index, im in enumerate(dataset.gallery.images_train):
+            dataset.gallery.images_train[index] = self.convert_image(im)
+
+    def convert_image(self, im):
+        origin_color_space = im.colorspace
+        im = im.to_color_space(self.color_space)
+        im[:, :, self.channel] = cv2.equalizeHist(im[:, :, 0])
+        return im.to_color_space(origin_color_space)
+
+    def dict_name(self):
+        if self.color_space == CS_HSV:
+            colorspace = "HSV"
+        else:  # CS_YCrCb
+            colorspace = "YCrCb"
+        return {"Preproc": "IluNorm_%s" % colorspace}

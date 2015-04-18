@@ -1,6 +1,7 @@
 __author__ = 'luigolas'
 
 import sys
+import ast
 from PyQt4 import QtGui
 import os
 import package.segmenter as segmenter
@@ -68,7 +69,8 @@ def run_image_selection():
             dim = "1D"
         else:
             dim = "3D"
-        fe = feature_extractor.Histogram(colorspace, appMainForm.spinBoxBins.value(), regions[0], dim, regions[1])
+        fe = feature_extractor.Histogram(colorspace, ast.literal_eval(str(appMainForm.lineEditBins.text())), regions[0],
+                                         dim, regions[1])
     else:
         fe = None
 

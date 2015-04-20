@@ -23,10 +23,6 @@ galleryYtest = None
 galleryYtrain = None
 
 
-def _parallel_calc_masks(seg, im):
-    return seg.segment(im)
-
-
 def _parallel_transform(fe, im, mask):
     return fe.transform(im, mask)
 
@@ -86,9 +82,9 @@ class Execution():
             P2_cam1_P2_cam2_Grabcut2OptimalMask_Histogram_IIP_[5, 5, 5]_6R_3D_BHATT
         :return:
         """
-
-        name = "%s_%s_%s_%s" % (
-            self.dataset.name(), self.segmenter.name, self.feature_extractor.name, self.comparator.name)
+        # TODO Set unique and descriptive name
+        name = "%s_%s_%s" % (
+            self.dataset.name(), self.feature_extractor.name, self.comparator.name)
         return name
 
     def dict_name(self):
@@ -129,7 +125,7 @@ class Execution():
         # print("Calculating Masks")  # TODO: Add option for not segmenting
         # self._calc_masks(multiprocessing)
 
-        print("--Tranforming Dataset--")
+        print("--Extracting Features--")
         self._transform_dataset(1)
 
         # Calculate Comparison matrix
@@ -151,8 +147,9 @@ class Execution():
         self.feature_extractor.bins = None
         self.feature_extractor.regions = None
         del self.feature_extractor
-        self.segmenter._mask = None
-        del self.segmenter
+        for preproc in self.preprocessing:
+            del preproc
+        del self.preprocessing
         del self.comparison_matrix
         del self.ranking_matrix
         probeX = None
@@ -191,7 +188,7 @@ class Execution():
             return
         else:
             for preproc in self.preprocessing:
-                preproc.preprocess(self.dataset, n_jobs)
+                preproc.preprocess_dataset(self.dataset, n_jobs)
 
     def _transform_dataset(self, n_jobs=-1):
         global probeXtrain, galleryYtrain, probeXtest, galleryYtest

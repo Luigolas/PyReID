@@ -1,5 +1,7 @@
 import itertools
 import cv2
+import math
+from scipy.optimize import fminbound
 from package import image
 from package.dataset import Dataset
 from package.image import Image, CS_YCrCb, CS_HSV, CS_BGR
@@ -7,14 +9,20 @@ from sklearn.externals.joblib import Parallel, delayed
 import numpy as np
 from package.utilities import InitializationError
 from package import feature_extractor
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+
 
 
 __author__ = 'luigolas'
 
 
 class Preprocessing(object):
-    def preprocess(self, dataset, n_jobs=1):
-        raise NotImplementedError("Please Implement preprocess method")
+    def preprocess_dataset(self, dataset, n_jobs=1):
+        raise NotImplementedError("Please Implement preprocess_dataset method")
+
+    def process_image(self, im, *args):
+        raise NotImplementedError("Please Implement process_image method")
 
     def dict_name(self):
         raise NotImplementedError("Please Implement dict_name")
@@ -30,7 +38,7 @@ class BTF(Preprocessing):
     def dict_name(self):
         return {"Preproc": self._method}
 
-    def preprocess(self, dataset, n_jobs=1):
+    def preprocess_dataset(self, dataset, n_jobs=1):
         print("   BTF (%s)..." % self._method)
         self.btf = None
         # if dataset.train_size is None:
@@ -97,12 +105,12 @@ class BTF(Preprocessing):
 
         new_images_train = []
         for im in dataset.probe.images_train:
-            new_images_train.append(self._transform_image(im))
+            new_images_train.append(self.process_image(im))
         dataset.probe.images_train = new_images_train
 
         new_images_test = []
         for im in dataset.probe.images_test:
-            new_images_test.append(self._transform_image(im))
+            new_images_test.append(self.process_image(im))
         dataset.probe.images_test = new_images_test
         # return new_images
 
@@ -144,7 +152,7 @@ class BTF(Preprocessing):
             [feature_extractor.Histogram.normalize_hist(h_channel.cumsum(), normalization=cv2.NORM_INF) for h_channel
              in h])
 
-    def _transform_image(self, im):
+    def process_image(self, im, *args):
         im_converted = np.empty_like(im)
         for row in range(im.shape[0]):
             for column in range(im.shape[1]):
@@ -164,22 +172,21 @@ class Illumination_Normalization(Preprocessing):
         else:  # CS_YCrCb
             self.channel = 0
 
-    def preprocess(self, dataset, n_jobs=1):
+    def preprocess_dataset(self, dataset, n_jobs=1):
         print("   Illumination Normalization...")
         assert(type(dataset) == Dataset)
-        for index, im in enumerate(dataset.probe.images_test):
-            dataset.probe.images_test[index] = self._transform_image(im)
 
-        for index, im in enumerate(dataset.probe.images_train):
-            dataset.probe.images_train[index] = self._transform_image(im)
+        imgs = dataset.probe.images_train + dataset.probe.images_test
+        imgs += dataset.gallery.images_train + dataset.gallery.images_test
+        results = Parallel(n_jobs)(delayed(_parallel_preprocess)(self, im) for im in imgs)
+        train_len = dataset.train_size
+        test_len = dataset.test_size
+        dataset.probe.images_train = results[:train_len]
+        dataset.probe.images_test = results[train_len:train_len + test_len]
+        dataset.gallery.images_train = results[train_len + test_len:-test_len]
+        dataset.gallery.images_test = results[-test_len:]
 
-        for index, im in enumerate(dataset.gallery.images_test):
-            dataset.gallery.images_test[index] = self._transform_image(im)
-
-        for index, im in enumerate(dataset.gallery.images_train):
-            dataset.gallery.images_train[index] = self._transform_image(im)
-
-    def _transform_image(self, im):
+    def process_image(self, im, *args):
         origin_color_space = im.colorspace
         im = im.to_color_space(self.color_space)
         im[:, :, self.channel] = cv2.equalizeHist(im[:, :, 0])
@@ -207,11 +214,11 @@ class Grabcut(Preprocessing):
         # self.dict_name = {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
         #                   "Mask": self._mask_name}
 
-    def preprocess(self, dataset, n_jobs=1):
+    def preprocess_dataset(self, dataset, n_jobs=1):
         print("   Generating Masks (Grabcut)...")
         imgs = dataset.probe.images_train + dataset.probe.images_test
         imgs += dataset.gallery.images_train + dataset.gallery.images_test
-        results = Parallel(n_jobs)(delayed(_parallel_calc_masks)(self.segment, im) for im in imgs)
+        results = Parallel(n_jobs)(delayed(_parallel_preprocess)(self, im) for im in imgs)
         train_len = dataset.train_size
         test_len = dataset.test_size
         dataset.probe.masks_train = results[:train_len]
@@ -219,21 +226,21 @@ class Grabcut(Preprocessing):
         dataset.gallery.masks_train = results[train_len + test_len:-test_len]
         dataset.gallery.masks_test = results[-test_len:]
 
-    def segment(self, image):
+    def process_image(self, im, *args):
         """
 
-        :param image:
+        :param im:
         :return: :raise TypeError:
         """
-        if not isinstance(image, Image):
+        if not isinstance(im, Image):
             raise TypeError("Must be a valid Image (package.image) object")
 
-        if image.colorspace != self._colorspace:
+        if im.colorspace != self._colorspace:
             raise AttributeError("Image must be in BGR color space")
 
         # if app.DB:
         #     try:
-        #         mask = app.DB[self.dbname(image.imgname)]
+        #         mask = app.DB[self.dbname(im.imgname)]
         #         # print("returning mask for " + imgname + " [0][0:5]: " + str(mask[4][10:25]))
         #         return mask
         #     except FileNotFoundError:
@@ -244,12 +251,12 @@ class Grabcut(Preprocessing):
         fgdmodel = np.zeros((1, 65), np.float64)
         mask = self._mask.copy()
         # mask = copy.copy(self._mask)
-        cv2.grabCut(image, mask, None, bgdmodel, fgdmodel, self._iter_count, cv2.GC_INIT_WITH_MASK)
+        cv2.grabCut(im, mask, None, bgdmodel, fgdmodel, self._iter_count, cv2.GC_INIT_WITH_MASK)
 
         mask = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
 
         # if app.DB:
-        #     app.DB[self.dbname(image.imgname)] = mask
+        #     app.DB[self.dbname(im.imgname)] = mask
 
         return mask
 
@@ -266,6 +273,172 @@ class Grabcut(Preprocessing):
         return keys
 
 
-def _parallel_calc_masks(seg, im):
-    return seg(im)
-    # return seg.segment(im)
+class Silhouette_Partition(Preprocessing):
+    def __init__(self, alpha=0.5, kernel="GMM", sigma_body=7.4, sigma_legs=8.7):
+        self.I = 0
+        self.J = 0
+        self.deltaI = 0
+        self.deltaJ = 0
+        self.sigma = 0
+        self.sigmaBODY = sigma_body
+        self.sigmaLEGS = sigma_legs
+        self.deviationBODY = sigma_body
+        self.deviationLEGS = sigma_legs
+        self.search_range_H = []
+        self.search_range_V = []
+        self.alpha = alpha
+        self.kernel_name = kernel
+        if kernel == "GMM":
+            self.kernel = _gau_mix_kernel
+        elif kernel == "Gaussian":
+            self.kernel = _gau_kernel
+        else:
+            raise ValueError("Invalid kernel %s" % kernel)
+
+    def preprocess_dataset(self, dataset, n_jobs=1):
+        print("   Calculating Regions and Maps...")
+        (self.I, self.J, _) = dataset.probe.images_test[0].shape  # Assumes all images of same shame
+        self.deltaI = self.I / 8
+        self.deltaJ = self.J / 4
+        self.sigma = self.J / 5.
+        # self.sigmaBODY = 6.5
+        # self.sigmaLEGS = 5.5
+        self.sigmaBODY = self.J / self.sigmaBODY
+        self.sigmaLEGS = self.J / self.sigmaLEGS
+        # self.deviationBODY = sigma_body
+        self.deviationLEGS /= 2
+
+        self.search_range_H = [self.deltaI * 3, (self.I - self.deltaI * 3) - 1]
+        self.search_range_V = [self.deltaJ * 1.3, (self.J - self.deltaJ * 1.3) - 1]
+
+        imgs = dataset.probe.images_train + dataset.probe.images_test
+        imgs += dataset.gallery.images_train + dataset.gallery.images_test
+        masks = dataset.probe.masks_train + dataset.probe.masks_test
+        masks += dataset.gallery.masks_train + dataset.gallery.masks_test
+
+        results = Parallel(n_jobs)(delayed(_parallel_preprocess)(self, im, mask) for im, mask in zip(imgs, masks))
+
+        train_len = dataset.train_size
+        test_len = dataset.test_size
+        dataset.probe.regions_train = [i[0] for i in results[:train_len]]
+        dataset.probe.maps_train = [i[1] for i in results[:train_len]]
+        dataset.probe.regions_test = [i[0] for i in results[train_len:train_len + test_len]]
+        dataset.probe.maps_test = [i[1] for i in results[train_len:train_len + test_len]]
+        dataset.gallery.regions_train = [i[0] for i in results[train_len + test_len:-test_len]]
+        dataset.gallery.maps_train = [i[1] for i in results[train_len + test_len:-test_len]]
+        dataset.gallery.regions_test = [i[0] for i in results[-test_len:]]
+        dataset.gallery.maps_test = [i[1] for i in results[-test_len:]]
+
+    def process_image(self, im, *args):
+        mask = args[0]
+        im_hsv = im.to_color_space(CS_HSV, normed=True)
+
+        lineTL = np.uint16(fminbound(Silhouette_Partition.dissym_div, self.search_range_H[0], self.search_range_H[1],
+                                     (im, mask, self.deltaI, self.alpha), 1e-1))
+        lineHT = np.uint16(fminbound(Silhouette_Partition.dissym_div_Head, self.deltaI * 0.9, self.search_range_H[0] - self.deltaI * 1.5,
+                                     (im, mask, self.deltaI), 1e-1))
+        sim_lineBODY = np.uint16(fminbound(Silhouette_Partition.sym_div, self.search_range_V[0], self.search_range_V[1],
+                                           (im_hsv[0:lineTL, :], mask[0:lineTL, :], self.deltaJ, self.alpha), 1e-1))
+        sim_lineLEGS = np.uint16(fminbound(Silhouette_Partition.sym_div, self.search_range_V[0], self.search_range_V[1],
+                                           (im_hsv[lineTL:, :], mask[lineTL:, :], self.deltaJ, self.alpha), 1e-1))
+
+        regions = [((lineHT, lineTL), (0, self.J)), ((lineTL, self.I), (0, self.J))]
+        # regions:[            region body        ,          region legs           ]
+
+        # mapHEAD = np.zeros((lineHT, self.J), np.float64)
+
+        mapBODY = self.kernel(sim_lineBODY, self.sigmaBODY, lineTL - lineHT, self.J, self.deviationBODY)
+        mapLEGS = self.kernel(sim_lineLEGS, self.sigmaLEGS, self.I - lineTL, self.J, self.deviationLEGS)
+        # mapFULL = np.concatenate((mapHEAD, mapBODY, mapLEGS))
+        # plt.imshow(mapFULL)
+        # plt.show()
+        maps = [mapBODY, mapLEGS]
+        return regions, maps
+        # return regions
+
+
+    @staticmethod
+    def _init_sym(delta, i, img, mask):
+        i = int(round(i))
+        delta = int(delta)
+        imgUP = img[0:(i + 1), :]
+        imgDOWN = img[i:, :]
+        MSK_U = mask[0:(i + 1), :]
+        MSK_D = mask[i:, :]
+        return i, delta, MSK_D, MSK_U, imgDOWN, imgUP
+
+    @staticmethod
+    def dissym_div(i, img, mask, delta, alpha):
+        i, delta, MSK_D, MSK_U, imgDOWN, imgUP = Silhouette_Partition._init_sym(delta, i, img, mask)
+
+        dimLoc = delta + 1
+        indexes = list(range(dimLoc))
+
+        imgUPloc = imgUP[indexes, :, :]
+        imgDWloc = imgDOWN[indexes, :, :][:, ::-1]
+
+        d = alpha * (1 - math.sqrt(np.sum((imgUPloc - imgDWloc) ** 2)) / dimLoc) + \
+            (1 - alpha) * (abs(int(np.sum(MSK_U)) - np.sum(MSK_D)) / max([MSK_U.size, MSK_D.size]))
+
+        return d
+
+    @staticmethod
+    def sym_div(i, img, mask, delta, alpha):
+        i = int(round(i))
+        delta = int(delta)
+        imgL = img[:, 0:(i + 1)]
+        imgR = img[:, i:]
+        MSK_L = mask[:, 0:(i + 1)]
+        MSK_R = mask[:, i:]
+
+        dimLoc = delta + 1
+        indexes = list(range(dimLoc))
+
+        imgLloc = imgL[:, indexes, :]
+        imgRloc = imgR[:, indexes, :][:, ::-1]
+        d = alpha * math.sqrt(np.sum((imgLloc - imgRloc) ** 2)) / dimLoc + \
+            (1 - alpha) * (abs(int(np.sum(MSK_L)) - np.sum(MSK_R)) / max([MSK_L.size, MSK_R.size]))
+
+        return d
+
+    @staticmethod
+    def dissym_div_Head(i, img, mask, delta):
+        i, delta, MSK_D, MSK_U, imgDOWN, imgUP = Silhouette_Partition._init_sym(delta, i, img, mask)
+
+        localderU = list(range(max(i - delta, 0), i + 1))
+        localderD = list(range(0, delta + 1))
+
+        d = - abs(int(np.sum(MSK_U[localderU]))
+                  - np.sum(MSK_D[localderD]))
+
+        return d
+
+    def dict_name(self):
+        return {"Regions": self.kernel_name}
+
+
+def _gau_mix_kernel(x, sigma, H, W, dev):
+    x1 = float(dev)
+    x2 = float(dev)
+    w1 = 0.5
+    w2 = w1
+    g1 = norm.pdf(list(range(0, W)), x - x1, sigma)
+    # g1 /= g1.max()
+    g2 = norm.pdf(list(range(0, W)), x + x2, sigma)
+    # g2 /= g2.max()
+    gfinal = w1 * g1 + w2 * g2
+    gfinal /= gfinal.max()
+    gfinal = np.tile(gfinal, [H, 1])
+    return gfinal
+
+
+def _gau_kernel(x, sigma, H, W, *args):
+    g = norm.pdf(list(range(0, W)), x, sigma)
+    g /= g.max()
+    g = np.tile(g, [H, 1])
+    return g
+
+
+def _parallel_preprocess(preproc, im, *args):
+    # return preproc(im)
+    return preproc.process_image(im, *args)

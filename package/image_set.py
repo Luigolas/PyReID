@@ -21,6 +21,10 @@ class ImageSet(object):
         self.masks_test = None
         self.files_train = None
         self.files_test = None
+        self.regions_train = None
+        self.regions_test = None
+        self.maps_train = None
+        self.maps_test = None
 
     # def calc_masks(self, segmenter):
     #     if self.images is None:

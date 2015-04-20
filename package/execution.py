@@ -36,7 +36,7 @@ def _parallel_compare(comp, i1, i2):
 
 
 class Execution():
-    def __init__(self, dataset=None, segmenter=None, preproc=None, feature_extractor=None, comparator=None,
+    def __init__(self, dataset=None, preproc=None, feature_extractor=None, comparator=None,
                  post_ranker=None, train_split=None):
 
         if dataset is not None:
@@ -46,7 +46,6 @@ class Execution():
         if train_split is not None:
             self.dataset.generate_train_set(train_split)
 
-        self.segmenter = segmenter
         self.preprocessing = preproc
         self.feature_extractor = feature_extractor
         self.comparator = comparator
@@ -63,8 +62,8 @@ class Execution():
     def set_id_regex(self, regex):
         self.dataset.set_id_regex(regex)
 
-    def set_segmenter(self, segmenter):
-        self.segmenter = segmenter
+    # def set_segmenter(self, segmenter):
+    #     self.segmenter = segmenter
 
     def set_feature_extractor(self, feature_extractor):
         self.feature_extractor = feature_extractor
@@ -73,7 +72,10 @@ class Execution():
         self.comparator = comparator
 
     def set_preprocessing(self, preprocessing):
-        self.preprocessing = preprocessing
+        if self.preprocessing is None:
+            self.preprocessing = [preprocessing]
+        else:
+            self.preprocessing.append(preprocessing)
 
     def set_post_ranker(self, post_ranker):
         self.post_ranker = post_ranker
@@ -99,9 +101,10 @@ class Execution():
         """
         name = {}
         if self.preprocessing is not None:
-            name.update(self.preprocessing.dict_name())
+            for preproc in self.preprocessing:
+                name.update(preproc.dict_name())
         name.update(self.dataset.dict_name())
-        name.update(self.segmenter.dict_name)
+        # name.update(self.segmenter.dict_name)
         name.update(self.feature_extractor.dict_name)
         name.update(self.comparator.dict_name)
         return name
@@ -110,29 +113,28 @@ class Execution():
         global probeX, galleryY, probeXtest, galleryYtest, probeXtrain, galleryYtrain
 
         if sys.gettrace() is None:
-            multiprocessing = -1
+            n_jobs = -1
         else:
-            multiprocessing = 1
+            n_jobs = 1
 
         self._check_initialization()
 
         print("Loading dataset images")
         self.dataset.load_images()
 
-        print("Preprocessing")  # Requires Masks already calculated for BTF!!!!
-        self._preprocess()
+        print("--Preprocessing--")  # Requires Masks already calculated for BTF!!!!
+        self._preprocess(n_jobs)
 
         # if self.dataset.probe.masks is None or self.dataset.gallery.masks is None:
-        print("Calculating Masks")  # TODO: Add option for not segmenting
-        self._calc_masks(multiprocessing)
+        # print("Calculating Masks")  # TODO: Add option for not segmenting
+        # self._calc_masks(multiprocessing)
 
-
-        print("Tranforming Dataset")
+        print("--Tranforming Dataset--")
         self._transform_dataset(1)
 
         # Calculate Comparison matrix
         print("Calculating Comparison Matrix")
-        self._calc_comparison_matrix(multiprocessing)
+        self._calc_comparison_matrix(n_jobs)
 
         # Calculate Ranking matrix
         print("Calculating Ranking Matrix")
@@ -166,29 +168,30 @@ class Execution():
         if self.dataset.id_regex is None:
             # self.dataset.set_id_regex("P[1-6]_[0-9]{3}")
             raise InitializationError("id_regex not initialized")
-        if self.segmenter is None:
-            raise InitializationError("segmenter not initialized")
+        # if self.segmenter is None:
+        #     raise InitializationError("segmenter not initialized")
         if self.feature_extractor is None:
             raise InitializationError("feature_extractor not initialized")
         if self.comparator is None:
             raise InitializationError("comparator not initialized")
 
-    def _calc_masks(self, n_jobs=-1):
-        imgs = self.dataset.probe.images_train + self.dataset.probe.images_test
-        imgs += self.dataset.gallery.images_train + self.dataset.gallery.images_test
-        results = Parallel(n_jobs)(delayed(_parallel_calc_masks)(self.segmenter, im) for im in imgs)
-        train_len = self.dataset.train_size
-        test_len = self.dataset.test_size
-        self.dataset.probe.masks_train = results[:train_len]
-        self.dataset.probe.masks_test = results[train_len:train_len + test_len]
-        self.dataset.gallery.masks_train = results[train_len + test_len:-test_len]
-        self.dataset.gallery.masks_test = results[-test_len:]
+    # def _calc_masks(self, n_jobs=-1):
+    #     imgs = self.dataset.probe.images_train + self.dataset.probe.images_test
+    #     imgs += self.dataset.gallery.images_train + self.dataset.gallery.images_test
+    #     results = Parallel(n_jobs)(delayed(_parallel_calc_masks)(self.segmenter, im) for im in imgs)
+    #     train_len = self.dataset.train_size
+    #     test_len = self.dataset.test_size
+    #     self.dataset.probe.masks_train = results[:train_len]
+    #     self.dataset.probe.masks_test = results[train_len:train_len + test_len]
+    #     self.dataset.gallery.masks_train = results[train_len + test_len:-test_len]
+    #     self.dataset.gallery.masks_test = results[-test_len:]
 
-    def _preprocess(self):
+    def _preprocess(self, n_jobs=1):
         if not self.preprocessing:
             return
         else:
-            self.preprocessing.preprocess(self.dataset)
+            for preproc in self.preprocessing:
+                preproc.preprocess(self.dataset, n_jobs)
 
     def _transform_dataset(self, n_jobs=-1):
         global probeXtrain, galleryYtrain, probeXtest, galleryYtest

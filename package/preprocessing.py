@@ -2,24 +2,22 @@ import itertools
 import cv2
 from package import image
 from package.dataset import Dataset
-from package.image import CS_YCrCb, CS_HSV, CS_BGR
+from package.image import Image, CS_YCrCb, CS_HSV, CS_BGR
+from sklearn.externals.joblib import Parallel, delayed
+import numpy as np
+from package.utilities import InitializationError
+from package import feature_extractor
+
 
 __author__ = 'luigolas'
 
-from package.utilities import InitializationError
-from package import feature_extractor
-import numpy as np
-
 
 class Preprocessing(object):
-    def preprocess(self, dataset):
+    def preprocess(self, dataset, n_jobs=1):
         raise NotImplementedError("Please Implement preprocess method")
 
-    def convert_image(self, im):
-        raise NotImplementedError("Please Implement convert_image method")
-
     def dict_name(self):
-        return {"Preproc": self._method}
+        raise NotImplementedError("Please Implement dict_name")
 
 
 class BTF(Preprocessing):
@@ -32,7 +30,8 @@ class BTF(Preprocessing):
     def dict_name(self):
         return {"Preproc": self._method}
 
-    def preprocess(self, dataset):
+    def preprocess(self, dataset, n_jobs=1):
+        print("   BTF (%s)..." % self._method)
         self.btf = None
         # if dataset.train_size is None:
         #     raise InitializationError("Can't preprocess if not train/test split defined")
@@ -98,12 +97,12 @@ class BTF(Preprocessing):
 
         new_images_train = []
         for im in dataset.probe.images_train:
-            new_images_train.append(self.convert_image(im))
+            new_images_train.append(self._transform_image(im))
         dataset.probe.images_train = new_images_train
 
         new_images_test = []
         for im in dataset.probe.images_test:
-            new_images_test.append(self.convert_image(im))
+            new_images_test.append(self._transform_image(im))
         dataset.probe.images_test = new_images_test
         # return new_images
 
@@ -145,7 +144,7 @@ class BTF(Preprocessing):
             [feature_extractor.Histogram.normalize_hist(h_channel.cumsum(), normalization=cv2.NORM_INF) for h_channel
              in h])
 
-    def convert_image(self, im):
+    def _transform_image(self, im):
         im_converted = np.empty_like(im)
         for row in range(im.shape[0]):
             for column in range(im.shape[1]):
@@ -165,21 +164,22 @@ class Illumination_Normalization(Preprocessing):
         else:  # CS_YCrCb
             self.channel = 0
 
-    def preprocess(self, dataset):
+    def preprocess(self, dataset, n_jobs=1):
+        print("   Illumination Normalization...")
         assert(type(dataset) == Dataset)
         for index, im in enumerate(dataset.probe.images_test):
-            dataset.probe.images_test[index] = self.convert_image(im)
+            dataset.probe.images_test[index] = self._transform_image(im)
 
         for index, im in enumerate(dataset.probe.images_train):
-            dataset.probe.images_train[index] = self.convert_image(im)
+            dataset.probe.images_train[index] = self._transform_image(im)
 
         for index, im in enumerate(dataset.gallery.images_test):
-            dataset.gallery.images_test[index] = self.convert_image(im)
+            dataset.gallery.images_test[index] = self._transform_image(im)
 
         for index, im in enumerate(dataset.gallery.images_train):
-            dataset.gallery.images_train[index] = self.convert_image(im)
+            dataset.gallery.images_train[index] = self._transform_image(im)
 
-    def convert_image(self, im):
+    def _transform_image(self, im):
         origin_color_space = im.colorspace
         im = im.to_color_space(self.color_space)
         im[:, :, self.channel] = cv2.equalizeHist(im[:, :, 0])
@@ -191,3 +191,81 @@ class Illumination_Normalization(Preprocessing):
         else:  # CS_YCrCb
             colorspace = "YCrCb"
         return {"Preproc": "IluNorm_%s" % colorspace}
+
+
+class Grabcut(Preprocessing):
+    compatible_color_spaces = [CS_BGR]
+
+    def __init__(self, mask_source, iter_count=2, color_space=CS_BGR):
+        self._mask_name = mask_source.split("/")[-1].split(".")[0]
+        self._mask = np.loadtxt(mask_source, np.uint8)
+        self._iter_count = iter_count
+        if color_space not in Grabcut.compatible_color_spaces:
+            raise AttributeError("Grabcut can't work with colorspace " + str(color_space))
+        self._colorspace = color_space
+        self.name = type(self).__name__ + str(self._iter_count) + self._mask_name
+        # self.dict_name = {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
+        #                   "Mask": self._mask_name}
+
+    def preprocess(self, dataset, n_jobs=1):
+        print("   Generating Masks (Grabcut)...")
+        imgs = dataset.probe.images_train + dataset.probe.images_test
+        imgs += dataset.gallery.images_train + dataset.gallery.images_test
+        results = Parallel(n_jobs)(delayed(_parallel_calc_masks)(self.segment, im) for im in imgs)
+        train_len = dataset.train_size
+        test_len = dataset.test_size
+        dataset.probe.masks_train = results[:train_len]
+        dataset.probe.masks_test = results[train_len:train_len + test_len]
+        dataset.gallery.masks_train = results[train_len + test_len:-test_len]
+        dataset.gallery.masks_test = results[-test_len:]
+
+    def segment(self, image):
+        """
+
+        :param image:
+        :return: :raise TypeError:
+        """
+        if not isinstance(image, Image):
+            raise TypeError("Must be a valid Image (package.image) object")
+
+        if image.colorspace != self._colorspace:
+            raise AttributeError("Image must be in BGR color space")
+
+        # if app.DB:
+        #     try:
+        #         mask = app.DB[self.dbname(image.imgname)]
+        #         # print("returning mask for " + imgname + " [0][0:5]: " + str(mask[4][10:25]))
+        #         return mask
+        #     except FileNotFoundError:
+        #         # Not in DataBase, continue calculating
+        #         pass
+
+        bgdmodel = np.zeros((1, 65), np.float64)
+        fgdmodel = np.zeros((1, 65), np.float64)
+        mask = self._mask.copy()
+        # mask = copy.copy(self._mask)
+        cv2.grabCut(image, mask, None, bgdmodel, fgdmodel, self._iter_count, cv2.GC_INIT_WITH_MASK)
+
+        mask = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
+
+        # if app.DB:
+        #     app.DB[self.dbname(image.imgname)] = mask
+
+        return mask
+
+    def dict_name(self):
+        return {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
+                "Mask": self._mask_name}
+
+    def dbname(self, imgname):
+        class_name = type(self).__name__
+        foldername = imgname.split("/")[-2]
+        imgname = imgname.split("/")[-1]
+        imgname = imgname.split(".")[0]  # Take out file extension
+        keys = ["masks", class_name, "iter" + str(self._iter_count), self._mask_name, foldername, imgname]
+        return keys
+
+
+def _parallel_calc_masks(seg, im):
+    return seg(im)
+    # return seg.segment(im)

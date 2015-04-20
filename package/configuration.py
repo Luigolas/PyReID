@@ -15,7 +15,6 @@ from package.image_set import ImageSet
 from package.execution import Execution
 from package.statistics import Statistics
 from package.utilities import InitializationError
-from package.segmenter import Grabcut
 from package.image import CS_BGR
 from package.preprocessing import BTF
 import package.comparator as comparator

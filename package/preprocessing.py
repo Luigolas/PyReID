@@ -10,19 +10,22 @@ import numpy as np
 from package.utilities import InitializationError
 from package import feature_extractor
 from scipy.stats import norm
-import matplotlib.pyplot as plt
-
 
 
 __author__ = 'luigolas'
+
+
+def _parallel_preprocess(preproc, im, *args):
+    # return preproc(im)
+    return preproc.process_image(im, *args)
 
 
 class Preprocessing(object):
     def preprocess_dataset(self, dataset, n_jobs=1):
         raise NotImplementedError("Please Implement preprocess_dataset method")
 
-    def process_image(self, im, *args):
-        raise NotImplementedError("Please Implement process_image method")
+    # def process_image(self, im, *args):
+    #     raise NotImplementedError("Please Implement process_image method")
 
     def dict_name(self):
         raise NotImplementedError("Please Implement dict_name")
@@ -346,7 +349,6 @@ class Silhouette_Partition(Preprocessing):
         # regions:[            region body        ,          region legs           ]
 
         # mapHEAD = np.zeros((lineHT, self.J), np.float64)
-
         mapBODY = self.kernel(sim_lineBODY, self.sigmaBODY, lineTL - lineHT, self.J, self.deviationBODY)
         mapLEGS = self.kernel(sim_lineLEGS, self.sigmaLEGS, self.I - lineTL, self.J, self.deviationLEGS)
         # mapFULL = np.concatenate((mapHEAD, mapBODY, mapLEGS))
@@ -354,8 +356,6 @@ class Silhouette_Partition(Preprocessing):
         # plt.show()
         maps = [mapBODY, mapLEGS]
         return regions, maps
-        # return regions
-
 
     @staticmethod
     def _init_sym(delta, i, img, mask):
@@ -439,6 +439,25 @@ def _gau_kernel(x, sigma, H, W, *args):
     return g
 
 
-def _parallel_preprocess(preproc, im, *args):
-    # return preproc(im)
-    return preproc.process_image(im, *args)
+class VerticalRegions(Preprocessing):
+    def __init__(self, regions, regions_name):
+        self.regions = regions
+        self.regions_name = regions_name
+        # self.I = 0
+        # self.J = 0
+
+    def preprocess_dataset(self, dataset, n_jobs=1):
+        # [[0, 27], [28, 54], [55, 81], [82, 108], [109, 135], [136, 160]] #  Over 100
+        (I, J, _) = dataset.probe.images_test[0].shape
+        regions = []
+        for r in self.regions:
+            regions.append(((int(r[0] * I / 100.), int(r[1] * I / 100.)), (0, J)))
+        maps_test = [regions] * dataset.test_size
+        maps_train = [regions] * dataset.train_size
+        dataset.probe.maps_test = maps_test
+        dataset.probe.maps_trains = maps_train
+        dataset.gallery.maps_test = maps_test
+        dataset.gallery.maps_trains = maps_train
+
+    def dict_name(self):
+        pass

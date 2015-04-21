@@ -17,14 +17,14 @@ from sklearn.externals.joblib import Parallel, delayed
 # For big improvements in multiprocesing
 # probeX = None
 # galleryY = None
-probeXtest = None
-probeXtrain = None
-galleryYtest = None
-galleryYtrain = None
+# probeXtest = None
+# probeXtrain = None
+# galleryYtest = None
+# galleryYtrain = None
 
 
 def _parallel_transform(fe, im, mask):
-    return fe.transform(im, mask)
+    return fe.extract(im, mask)
 
 
 def _parallel_compare(comp, i1, i2):
@@ -126,7 +126,7 @@ class Execution():
         # self._calc_masks(multiprocessing)
 
         print("--Extracting Features--")
-        self._transform_dataset(1)
+        self._transform_dataset(n_jobs)
 
         # Calculate Comparison matrix
         print("Calculating Comparison Matrix")
@@ -191,22 +191,7 @@ class Execution():
                 preproc.preprocess_dataset(self.dataset, n_jobs)
 
     def _transform_dataset(self, n_jobs=-1):
-        global probeXtrain, galleryYtrain, probeXtest, galleryYtest
-        images = self.dataset.probe.images_train + self.dataset.probe.images_test
-        images += self.dataset.gallery.images_train + self.dataset.gallery.images_test
-        masks = self.dataset.probe.masks_train + self.dataset.probe.masks_test
-        masks += self.dataset.gallery.masks_train + self.dataset.gallery.masks_test
-
-        args = ((im, mask) for im, mask in zip(images, masks))
-
-        results = Parallel(n_jobs)(delayed(_parallel_transform)(self.feature_extractor, im, mask) for im, mask in args)
-
-        train_len = self.dataset.train_size
-        test_len = self.dataset.test_size
-        probeXtrain = np.asarray(results[:train_len])
-        probeXtest = np.asarray(results[train_len:train_len + test_len])
-        galleryYtrain = np.asarray(results[train_len + test_len:-test_len])
-        galleryYtest = np.asarray(results[-test_len:])
+        self.feature_extractor.extract_dataset(self.dataset, n_jobs)
 
     # @profile
     def _calc_comparison_matrix(self, n_jobs=-1):

@@ -44,8 +44,8 @@ class BTF(Preprocessing):
     def preprocess_dataset(self, dataset, n_jobs=1):
         print("   BTF (%s)..." % self._method)
         self.btf = None
-        # if dataset.train_size is None:
-        #     raise InitializationError("Can't preprocess if not train/test split defined")
+        if not dataset.train_size:
+            raise InitializationError("Can't preprocess without train elements")
         probe_images = dataset.probe.images_train
         probe_masks = dataset.probe.masks_train
         gallery_images = dataset.gallery.images_train
@@ -144,7 +144,7 @@ class BTF(Preprocessing):
             masks = [masks] * len(ims)
         h = []
         for im, mask in zip(ims, masks):
-            result = ev.transform(im, mask, normalization=None)
+            result = ev.extract(im, mask, normalization=None)
             h = [a + b for a, b in
                  itertools.izip_longest(h, list(result), fillvalue=0)]  # Accumulate with previous histograms
 
@@ -229,7 +229,7 @@ class Grabcut(Preprocessing):
         dataset.gallery.masks_train = results[train_len + test_len:-test_len]
         dataset.gallery.masks_test = results[-test_len:]
 
-    def process_image(self, im, *args):
+    def process_image(self, im):
         """
 
         :param im:
@@ -345,7 +345,7 @@ class Silhouette_Partition(Preprocessing):
         sim_lineLEGS = np.uint16(fminbound(Silhouette_Partition.sym_div, self.search_range_V[0], self.search_range_V[1],
                                            (im_hsv[lineTL:, :], mask[lineTL:, :], self.deltaJ, self.alpha), 1e-1))
 
-        regions = [((lineHT, lineTL), (0, self.J)), ((lineTL, self.I), (0, self.J))]
+        regions = np.asarray([(lineHT, lineTL, 0, self.J), (lineTL, self.I, 0, self.J)])
         # regions:[            region body        ,          region legs           ]
 
         # mapHEAD = np.zeros((lineHT, self.J), np.float64)
@@ -447,17 +447,19 @@ class VerticalRegions(Preprocessing):
         # self.J = 0
 
     def preprocess_dataset(self, dataset, n_jobs=1):
-        # [[0, 27], [28, 54], [55, 81], [82, 108], [109, 135], [136, 160]] #  Over 100
+        print("   Generating Vertical regions...")
+        # [[0, 16], [16, 33], [33, 50], [50, 67], [67, 84], [84, 100]] #  Over 100% size, not actual image size
         (I, J, _) = dataset.probe.images_test[0].shape
         regions = []
         for r in self.regions:
-            regions.append(((int(r[0] * I / 100.), int(r[1] * I / 100.)), (0, J)))
-        maps_test = [regions] * dataset.test_size
-        maps_train = [regions] * dataset.train_size
-        dataset.probe.maps_test = maps_test
-        dataset.probe.maps_trains = maps_train
-        dataset.gallery.maps_test = maps_test
-        dataset.gallery.maps_trains = maps_train
+            regions.append((int(r[0] * I / 100.), int(r[1] * I / 100.), 0, J))
+        regions = np.asarray(regions)
+        regions_test = [regions] * dataset.test_size
+        regions_train = [regions] * dataset.train_size
+        dataset.probe.regions_test = regions_test
+        dataset.probe.regions_trains = regions_train
+        dataset.gallery.regions_test = regions_test
+        dataset.gallery.regions_trains = regions_train
 
     def dict_name(self):
         pass

@@ -15,24 +15,18 @@ class ImageSet(object):
         if self.dataset_len == 0:
             raise ImagesNotFoundError("At folder " + self.path)
         # self.images = self.load_images()
-        self.images_train = None
-        self.images_test = None
-        self.masks_train = None
-        self.masks_test = None
-        self.files_train = None
-        self.files_test = None
-        self.regions_train = None
-        self.regions_test = None
-        self.maps_train = None
-        self.maps_test = None
-
-    # def calc_masks(self, segmenter):
-    #     if self.images is None:
-    #         self.load_images()
-    #     self.masks = []
-    #     for img, imgname in zip(self.images, self.files):
-    #         self.masks.append(segmenter.segment(img))
-    #         # self.masks.append(segmenter.segment(self.images[0]))
+        self.images_train = []
+        self.images_test = []
+        self.masks_train = []
+        self.masks_test = []
+        self.files_train = []
+        self.files_test = []
+        self.regions_train = []
+        self.regions_test = []
+        self.maps_train = []
+        self.maps_test = []
+        self.fe_train = []
+        self.fe_test = []
 
     def _read_all_files(self):
         files = []
@@ -47,7 +41,7 @@ class ImageSet(object):
         self.images_train = []
         self.images_test = []
 
-        if self.files_test is None:  # If not initialized
+        if not self.files_test:  # If not initialized
             self.files_test = self.files
             self.files_train = []
 

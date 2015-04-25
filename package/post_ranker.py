@@ -150,7 +150,7 @@ class PostRankOptimization(object):
         for i, elem in zip(range(size), elements):
             # print files_order_list[elem]
             img = self.execution.dataset.gallery.images_test[elem].copy()
-            if self.execution.dataset.same_individual_by_id(self.subject, elem, "test"):
+            if self.execution.dataset.same_individual_by_pos(self.subject, elem, "test"):
                 img[0:10, 0:10] = [0, 255, 0]
             cv2.putText(img, str(i), (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [0, 0, 255], 2)
 
@@ -190,7 +190,7 @@ class PostRankOptimization(object):
 
     def _calc_target_position(self):
         for column, elemg in enumerate(self.rank_list):
-            if self.execution.dataset.same_individual_by_id(self.subject, elemg, set="test"):
+            if self.execution.dataset.same_individual_by_pos(self.subject, elemg, set="test"):
                 target_position = column  # TODO: If not multiview we could exit loop here
                 self.target_position = target_position
                 break

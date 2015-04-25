@@ -1,26 +1,14 @@
-import sys
 
 __author__ = 'luigolas'
 
-import math
 # import time
-from package.utilities import InitializationError
 # import re
-import numpy as np
-# import package.image as image
-# import package.evaluator as evaluator
 # from memory_profiler import profile
 # import itertools
+import sys
+from package.utilities import InitializationError
+import numpy as np
 from package.dataset import Dataset
-from sklearn.externals.joblib import Parallel, delayed
-
-# For big improvements in multiprocesing
-# probeX = None
-# galleryY = None
-# probeXtest = None
-# probeXtrain = None
-# galleryYtest = None
-# galleryYtrain = None
 
 
 class Execution():
@@ -39,7 +27,7 @@ class Execution():
         self.feature_extractor = feature_extractor
         self.feature_matcher = feature_matcher
         self.matching_matrix = None
-        self.ranking_matrix = None
+        # self.ranking_matrix = None
         self.post_ranker = post_ranker
 
     def set_probe(self, folder):
@@ -50,9 +38,6 @@ class Execution():
 
     def set_id_regex(self, regex):
         self.dataset.set_id_regex(regex)
-
-    # def set_segmenter(self, segmenter):
-    #     self.segmenter = segmenter
 
     def set_feature_extractor(self, feature_extractor):
         self.feature_extractor = feature_extractor
@@ -123,9 +108,10 @@ class Execution():
 
         # Calculate Ranking matrix
         print("Calculating Ranking Matrix")
-        self._calc_ranking_matrix()
+        ranking_matrix = self._calc_ranking_matrix()
 
         print("Execution Finished")
+        return ranking_matrix
 
     def unload(self):
         global probeX, galleryY, probeXtest, galleryYtest
@@ -140,7 +126,7 @@ class Execution():
             del preproc
         del self.preprocessing
         del self.matching_matrix
-        del self.ranking_matrix
+        # del self.ranking_matrix
         probeX = None
         galleryY = None
         probeXtest = None
@@ -154,23 +140,10 @@ class Execution():
         if self.dataset.id_regex is None:
             # self.dataset.set_id_regex("P[1-6]_[0-9]{3}")
             raise InitializationError("id_regex not initialized")
-        # if self.segmenter is None:
-        #     raise InitializationError("segmenter not initialized")
         if self.feature_extractor is None:
             raise InitializationError("feature_extractor not initialized")
         if self.feature_matcher is None:
             raise InitializationError("feature_matcher not initialized")
-
-    # def _calc_masks(self, n_jobs=-1):
-    #     imgs = self.dataset.probe.images_train + self.dataset.probe.images_test
-    #     imgs += self.dataset.gallery.images_train + self.dataset.gallery.images_test
-    #     results = Parallel(n_jobs)(delayed(_parallel_calc_masks)(self.segmenter, im) for im in imgs)
-    #     train_len = self.dataset.train_size
-    #     test_len = self.dataset.test_size
-    #     self.dataset.probe.masks_train = results[:train_len]
-    #     self.dataset.probe.masks_test = results[train_len:train_len + test_len]
-    #     self.dataset.gallery.masks_train = results[train_len + test_len:-test_len]
-    #     self.dataset.gallery.masks_test = results[-test_len:]
 
     def _preprocess(self, n_jobs=1):
         if not self.preprocessing:
@@ -182,30 +155,18 @@ class Execution():
     def _extract_dataset(self, n_jobs=-1):
         self.feature_extractor.extract_dataset(self.dataset, n_jobs)
 
-    # @profile
     def _calc_matching_matrix(self, n_jobs=-1):
         self.matching_matrix = self.feature_matcher.match_dataset(self.dataset, n_jobs)
 
     def _calc_ranking_matrix(self):
         import package.feature_matcher as Comparator
-        # noinspection PyTypeChecker
         if self.feature_matcher.method == Comparator.HISTCMP_CORRE or \
            self.feature_matcher.method == Comparator.HISTCMP_INTERSECT:
             # The biggest value, the better
-            self.ranking_matrix = np.argsort(self.matching_matrix, axis=1)[:, ::-1].astype(np.uint16)
+            return np.argsort(self.matching_matrix, axis=1)[:, ::-1].astype(np.uint16)
             # Reverse order by axis 1
-
-            # self.ranking_matrix = np.argsort(self.matching_matrix[:, ::-1])
         else:  # The lower value, the better
-            # self.ranking_matrix = np.argsort(self.matching_matrix, axis=1)
-            self.ranking_matrix = np.argsort(self.matching_matrix).astype(np.uint16)
-            # self.ranking_matrix = np.argsort(self.matching_matrix, axis=1)
-
-#
-# def paralyze(*args):
-#     return args[0][0](*args[0][1:][0])
-#     pass
-
+            return np.argsort(self.matching_matrix).astype(np.uint16)
 
 
 

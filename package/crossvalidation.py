@@ -21,11 +21,11 @@ import package.feature_matcher as comparator
 import pandas as pd
 
 
-class Configuration():
+class CrossValidation():
     def __init__(self):
         self.executions = []
         self.statistics = []
-        self.post_rankers = []
+        # self.post_rankers = []
         # self._stats_comparative = []
         self.dataframe = None
 
@@ -35,11 +35,11 @@ class Configuration():
         else:
             raise TypeError("Must be an Execution object")
 
-    def add_statistics(self, stat):
-        if isinstance(stat, Statistics):
-            self.statistics.append(stat)
-        else:
-            raise TypeError("Must be a Statistics object")
+    # def add_statistics(self, stat):
+    #     if isinstance(stat, Statistics):
+    #         self.statistics.append(stat)
+    #     else:
+    #         raise TypeError("Must be a Statistics object")
 
     # def add_post_ranker(self, post_ranker):
     #     if isinstance(post_ranker, PostRankOptimization):
@@ -131,26 +131,20 @@ class Configuration():
         self._check_initialization()
         total = len(self.executions)
         # time.sleep(5)
-        for val, (execution, statistic) in enumerate(zip(self.executions, self.statistics)):
+        for val, execution in enumerate(self.executions):
             print("******** Execution %d of %d ********" % (val + 1, total))
-            execution.run()
-            statistic.set_execution(execution)
+            r_m = execution.run()
+            statistic = Statistics(execution.dataset, r_m)
+            self.statistics.append(statistic)
             print("Calculating Statistics")
             statistic.run()
-            name = statistic.dict_name()
-            if self.dataframe is None:
-                self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
-            else:
-                self.dataframe = self.dataframe.append(name, ignore_index=True)
-            print(statistic.rangeX[0])
-            print("")  # New lineTL
+            # name = statistic.dict_name()
+            # if self.dataframe is None:
+            #     self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
+            # else:
+            #     self.dataframe = self.dataframe.append(name, ignore_index=True)
+            print(statistic.CMC[19])  # Range 20
 
-            #Do some clean up
-            execution.unload()
-            execution = None
-            statistic._exec = None
-
-            gc.collect()
 
     def _check_initialization(self):
         if not self.executions:

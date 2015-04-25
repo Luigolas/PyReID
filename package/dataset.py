@@ -61,16 +61,16 @@ class Dataset(object):
         elem_id2 = re.search(self.id_regex, gallery_name).group(0)
         return elem_id1 == elem_id2
 
-    def same_individual_by_id(self, probe_id, gallery_id, set=None):
+    def same_individual_by_pos(self, probe_pos, gallery_pos, set=None):
         if set == "train":
-            probe_name = self.probe.files_train[probe_id]
-            gallery_name = self.gallery.files_train[gallery_id]
+            probe_name = self.probe.files_train[probe_pos]
+            gallery_name = self.gallery.files_train[gallery_pos]
         elif set == "test":
-            probe_name = self.probe.files_test[probe_id]
-            gallery_name = self.gallery.files_test[gallery_id]
+            probe_name = self.probe.files_test[probe_pos]
+            gallery_name = self.gallery.files_test[gallery_pos]
         elif set is None:
-            probe_name = self.probe.files[probe_id]
-            gallery_name = self.gallery.files[gallery_id]
+            probe_name = self.probe.files[probe_pos]
+            gallery_name = self.gallery.files[gallery_pos]
         else:
             raise ValueError("set must be None, \"train\" or \"test\"")
         return self.same_individual(probe_name, gallery_name)

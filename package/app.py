@@ -11,7 +11,7 @@ from package.image import CS_HSV, CS_BGR, CS_IIP
 import package.execution as execution
 from package.dataset import Dataset
 from package.post_ranker import SAA
-import package.comparator as comparator
+import package.feature_matcher as comparator
 from gui.gui import MainWindow, ImagesSelectionForm
 
 
@@ -74,7 +74,7 @@ def run_image_selection():
     else:
         fe = None
 
-    comp = comparator.CompHistograms(comparator.method_names.index(appMainForm.comboBoxComparator.currentText()),
+    comp = comparator.HistogramsCompare(comparator.method_names.index(appMainForm.comboBoxComparator.currentText()),
         weights)
 
     train_split = float(appMainForm.lineEditTrainSplit.text())

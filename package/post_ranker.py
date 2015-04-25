@@ -208,7 +208,7 @@ class SAA(PostRankOptimization):
         :param elem2_fe:
         :return:
         """
-        similarity = self.execution.comparator.compare(elem2_fe, execution.galleryYtest[elem])
+        similarity = self.execution.comparator.match(elem2_fe, execution.galleryYtest[elem])
         increment = sign * self.re_score_alpha
         if self.re_score_method_proportional:
             self.comp_list[elem] = comp_with_probe + (increment * comp_with_probe *

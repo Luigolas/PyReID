@@ -17,7 +17,7 @@ from package.statistics import Statistics
 from package.utilities import InitializationError
 from package.image import CS_BGR
 from package.preprocessing import BTF
-import package.comparator as comparator
+import package.feature_matcher as comparator
 import pandas as pd
 
 
@@ -107,7 +107,7 @@ class Configuration():
             ex.set_feature_extractor(
                 Histogram(colorspace, bins, regions=regions, dimension=dimension, region_name=region_name))
 
-            ex.set_comparator(comparator.CompHistograms(method, weights))
+            ex.set_feature_matcher(comparator.HistogramsCompare(method, weights))
             self.executions.append(ex)
         print("%d executions generated" % len(self.executions))
 

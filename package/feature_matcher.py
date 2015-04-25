@@ -1,8 +1,10 @@
 # coding=utf-8
-# !/usr/bin/env python3
+# !/usr/bin/env python2
 import cv2
+import math
 import numpy as np
-import package.execution as execution
+from sklearn.externals.joblib import Parallel, delayed
+
 
 __author__ = 'luigolas'
 
@@ -14,8 +16,15 @@ HISTCMP_EUCLID = 4
 method_names = ["CORRE", "CHISQ", "INTER", "BHATT", "EUCLI"]
 
 
-class Comparator(object):
-    def compare(self, ev1, ev2):
+def _parallel_match(comp, i1, i2):
+    return comp.match(i1, i2)
+
+
+class FeatureMatcher(object):
+    def match_dataset(self, dataset, n_jobs=-1):
+        raise NotImplementedError("Please Implement compare _method")
+
+    def match(self, ev1, ev2):
         """
 
         :param ev1:
@@ -25,7 +34,7 @@ class Comparator(object):
         raise NotImplementedError("Please Implement compare _method")
 
 
-class CompHistograms(Comparator):
+class HistogramsCompare(FeatureMatcher):
     """
     Method to compare histograms
     :param comp_method:
@@ -33,7 +42,6 @@ class CompHistograms(Comparator):
     """
 
     def __init__(self, comp_method, weights=None):
-
         if comp_method not in [0, 1, 2, 3, 4]:  # Not the best way to check
             raise AttributeError("Comparisson method must be one of the predefined for CompHistograms")
         self.method = comp_method
@@ -41,25 +49,26 @@ class CompHistograms(Comparator):
         self.name = method_names[self.method]
         self.dict_name = {"Comparator": method_names[self.method]}
 
-    # def compare_by_test_index(self, hists1index, hists2index):
-    #     """
-    #     Look for values at global values (probeXtest and galleryYtest in package.execution)
-    #     :param hists1index:
-    #     :param hists2index:
-    #     :return:
-    #     """
-    #     hists1 = execution.probeXtest[hists1index]
-    #     hists2 = execution.galleryYtest[hists2index]
-    #     return self.compare(hists1, hists2)
+    def match_dataset(self, dataset, n_jobs=-1):
+        print("   Comparing Histograms")
+        args = ((elem1, elem2) for elem1 in dataset.probe.fe_test for elem2 in dataset.gallery.fe_test)
 
-    def compare(self, hists1, hists2):
+        results = Parallel(n_jobs)(delayed(_parallel_match)(self, e1, e2) for e1, e2 in args)
+
+        comparison_matrix = np.asarray(results, np.float32)
+
+        size = math.sqrt(comparison_matrix.shape[0])
+        comparison_matrix.shape = (size, size)
+        return comparison_matrix
+
+    def match(self, hists1, hists2):
         """
 
         :param hists1:
         :param hists2:
         :return:
         """
-        CompHistograms._check_size_params(hists1, hists2, self._weights)
+        HistogramsCompare._check_size_params(hists1, hists2, self._weights)
 
         if self._weights is None:
             weights = [1]
@@ -70,10 +79,11 @@ class CompHistograms(Comparator):
         num_histograms = len(weights)
         hist1 = hists1.reshape((num_histograms, hists1.shape[0] / num_histograms))
         hist2 = hists2.reshape((num_histograms, hists2.shape[0] / num_histograms))
+        # hist1 = np.concatenate((np.asarray([0.] * 36, np.float32), hists1))
+        # hist2 = np.concatenate((np.asarray([0.] * 36, np.float32), hists2))
+        # hist1 = hist1.reshape((num_histograms, hist1.shape[0] / num_histograms))
+        # hist2 = hist2.reshape((num_histograms, hist2.shape[0] / num_histograms))
         for h1, h2 in zip(hist1, hist2):
-            # if isinstance(h1, list):  # 2D case
-            # comp_val.append(sum([self.compareHist(h1_sub, h2_sub) for (h1_sub, h2_sub) in zip(h1, h2)]))
-            # else:  # 3D case
             if np.count_nonzero(h1) == 0 and np.count_nonzero(h2) == 0:
                 # Might return inequality when both histograms are zero. So we compare two simple histogram to ensure
                 # equality return value

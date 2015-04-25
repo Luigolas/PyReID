@@ -66,6 +66,7 @@ class Histogram(FeatureExtractor):
                           "FeBins": str(self._bins), "FeDim": self._dimension}
 
     def extract_dataset(self, dataset, n_jobs=-1):
+        print("   Calculating Histograms")
         images = dataset.probe.images_train + dataset.probe.images_test
         images += dataset.gallery.images_train + dataset.gallery.images_test
 
@@ -140,12 +141,19 @@ class Histogram(FeatureExtractor):
         :param normalization:
         :return:
         """
-        if mask is not None and len(mask):
-            mask = mask * weight
-        elif type(weight) != int:
-            mask = weight
-        else:
-            mask = None
+
+        # if mask is not None and len(mask):  # Using mask and map
+        #     mask = mask * weight
+        # elif type(weight) != int:
+        #     mask = weight
+        # else:
+        #     mask = None
+
+        # mask = weight                       # Using only MAP
+
+        # mask = np.ones_like(mask)             # Not using mask nor map
+
+        #  All comented, use only mask
 
         if self._dimension == "3D":
             # TODO fix for bin = 0 and add weighted ?
@@ -166,7 +174,7 @@ class Histogram(FeatureExtractor):
                     h = cv2.calcHist([image], [channel], mask, [bins],
                                      Histogram.color_ranges[image.colorspace][channel*2:channel*2+2])
 
-                hist.extend(self.normalize_hist(h, normalization))
+                hist.extend(self.normalize_hist(h.astype(np.float32), normalization))
                 # In 1D case it can't be converted to numpy array as it might have different dimension (bins) sizes
         return hist
 

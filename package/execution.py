@@ -23,19 +23,12 @@ from sklearn.externals.joblib import Parallel, delayed
 # galleryYtrain = None
 
 
-def _parallel_transform(fe, im, mask):
-    return fe.extract(im, mask)
-
-
-def _parallel_compare(comp, i1, i2):
-    return comp.compare(i1, i2)
-
-
 class Execution():
-    def __init__(self, dataset=None, preproc=None, feature_extractor=None, comparator=None,
+    def __init__(self, dataset=None, preproc=None, feature_extractor=None, feature_matcher=None,
                  post_ranker=None, train_split=None):
 
         if dataset is not None:
+            assert(type(dataset) == Dataset)
             self.dataset = dataset
         else:
             self.dataset = Dataset()
@@ -44,8 +37,8 @@ class Execution():
 
         self.preprocessing = preproc
         self.feature_extractor = feature_extractor
-        self.comparator = comparator
-        self.comparison_matrix = None
+        self.feature_matcher = feature_matcher
+        self.matching_matrix = None
         self.ranking_matrix = None
         self.post_ranker = post_ranker
 
@@ -64,8 +57,8 @@ class Execution():
     def set_feature_extractor(self, feature_extractor):
         self.feature_extractor = feature_extractor
 
-    def set_comparator(self, comparator):
-        self.comparator = comparator
+    def set_feature_matcher(self, feature_matcher):
+        self.feature_matcher = feature_matcher
 
     def set_preprocessing(self, preprocessing):
         if self.preprocessing is None:
@@ -84,7 +77,7 @@ class Execution():
         """
         # TODO Set unique and descriptive name
         name = "%s_%s_%s" % (
-            self.dataset.name(), self.feature_extractor.name, self.comparator.name)
+            self.dataset.name(), self.feature_extractor.name, self.feature_matcher.name)
         return name
 
     def dict_name(self):
@@ -102,7 +95,7 @@ class Execution():
         name.update(self.dataset.dict_name())
         # name.update(self.segmenter.dict_name)
         name.update(self.feature_extractor.dict_name)
-        name.update(self.comparator.dict_name)
+        name.update(self.feature_matcher.dict_name)
         return name
 
     def run(self):
@@ -118,19 +111,15 @@ class Execution():
         print("Loading dataset images")
         self.dataset.load_images()
 
-        print("--Preprocessing--")  # Requires Masks already calculated for BTF!!!!
+        print("Preprocessing")  # Requires Masks already calculated for BTF!!!!
         self._preprocess(n_jobs)
 
-        # if self.dataset.probe.masks is None or self.dataset.gallery.masks is None:
-        # print("Calculating Masks")  # TODO: Add option for not segmenting
-        # self._calc_masks(multiprocessing)
-
-        print("--Extracting Features--")
-        self._transform_dataset(n_jobs)
+        print("Extracting Features")
+        self._extract_dataset(n_jobs)
 
         # Calculate Comparison matrix
-        print("Calculating Comparison Matrix")
-        self._calc_comparison_matrix(n_jobs)
+        print("Matching Features")
+        self._calc_matching_matrix(n_jobs)
 
         # Calculate Ranking matrix
         print("Calculating Ranking Matrix")
@@ -142,15 +131,15 @@ class Execution():
         global probeX, galleryY, probeXtest, galleryYtest
         self.dataset.unload()
         del self.dataset
-        self.comparator.weigths = None
-        del self.comparator
+        self.feature_matcher.weigths = None
+        del self.feature_matcher
         self.feature_extractor.bins = None
         self.feature_extractor.regions = None
         del self.feature_extractor
         for preproc in self.preprocessing:
             del preproc
         del self.preprocessing
-        del self.comparison_matrix
+        del self.matching_matrix
         del self.ranking_matrix
         probeX = None
         galleryY = None
@@ -169,8 +158,8 @@ class Execution():
         #     raise InitializationError("segmenter not initialized")
         if self.feature_extractor is None:
             raise InitializationError("feature_extractor not initialized")
-        if self.comparator is None:
-            raise InitializationError("comparator not initialized")
+        if self.feature_matcher is None:
+            raise InitializationError("feature_matcher not initialized")
 
     # def _calc_masks(self, n_jobs=-1):
     #     imgs = self.dataset.probe.images_train + self.dataset.probe.images_test
@@ -190,35 +179,27 @@ class Execution():
             for preproc in self.preprocessing:
                 preproc.preprocess_dataset(self.dataset, n_jobs)
 
-    def _transform_dataset(self, n_jobs=-1):
+    def _extract_dataset(self, n_jobs=-1):
         self.feature_extractor.extract_dataset(self.dataset, n_jobs)
 
     # @profile
-    def _calc_comparison_matrix(self, n_jobs=-1):
-        global probeXtest, galleryYtest
-
-        args = ((elem1, elem2) for elem1 in probeXtest for elem2 in galleryYtest)
-
-        results = Parallel(n_jobs)(delayed(_parallel_compare)(self.comparator, e1, e2) for e1, e2 in args)
-
-        self.comparison_matrix = np.asarray(results, np.float32)
-
-        size = math.sqrt(self.comparison_matrix.shape[0])
-        self.comparison_matrix.shape = (size, size)
+    def _calc_matching_matrix(self, n_jobs=-1):
+        self.matching_matrix = self.feature_matcher.match_dataset(self.dataset, n_jobs)
 
     def _calc_ranking_matrix(self):
-        import package.comparator as Comparator
+        import package.feature_matcher as Comparator
         # noinspection PyTypeChecker
-        if self.comparator.method == Comparator.HISTCMP_CORRE or self.comparator.method == Comparator.HISTCMP_INTERSECT:
+        if self.feature_matcher.method == Comparator.HISTCMP_CORRE or \
+           self.feature_matcher.method == Comparator.HISTCMP_INTERSECT:
             # The biggest value, the better
-            self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)[:, ::-1].astype(np.uint16)
+            self.ranking_matrix = np.argsort(self.matching_matrix, axis=1)[:, ::-1].astype(np.uint16)
             # Reverse order by axis 1
 
-            # self.ranking_matrix = np.argsort(self.comparison_matrix[:, ::-1])
+            # self.ranking_matrix = np.argsort(self.matching_matrix[:, ::-1])
         else:  # The lower value, the better
-            # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
-            self.ranking_matrix = np.argsort(self.comparison_matrix).astype(np.uint16)
-            # self.ranking_matrix = np.argsort(self.comparison_matrix, axis=1)
+            # self.ranking_matrix = np.argsort(self.matching_matrix, axis=1)
+            self.ranking_matrix = np.argsort(self.matching_matrix).astype(np.uint16)
+            # self.ranking_matrix = np.argsort(self.matching_matrix, axis=1)
 
 #
 # def paralyze(*args):

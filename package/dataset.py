@@ -3,7 +3,9 @@ __author__ = 'luigolas'
 from package.image_set import ImageSet
 import re
 # import numpy as np
-from sklearn.cross_validation import train_test_split
+from sklearn.cross_validation import train_test_split, ShuffleSplit
+from itertools import chain
+from sklearn.utils import safe_indexing
 
 
 class Dataset(object):
@@ -17,11 +19,9 @@ class Dataset(object):
         else:  # Default to viper name convection
             self.id_regex = "[0-9]{3}_"
 
-        self.train_size, self.test_size = self.generate_train_set(train_size, test_size)
-
-        # self.train_indexes = None
-        # self.test_indexes = None
-        # self.preprocessed_probe = None
+        self.train_indexes, self.test_indexes = self.generate_train_set(train_size, test_size)
+        self.train_size = len(self.train_indexes)
+        self.test_size = len(self.test_indexes)
 
     def set_probe(self, folder):
         self.probe = ImageSet(folder)
@@ -85,12 +85,23 @@ class Dataset(object):
         :return:
         """
         if train_size is None and test_size is None:
-            pass  # TODO If no train nor test set... Consider what to do
+            self.probe.files_train, self.probe.files_test = [], self.probe.files
+            self.gallery.files_train, self.gallery.files_test = [], self.gallery.files
+            return [], list(range(0, len(self.probe.files)))
+        else:
+            n_samples = len(self.probe.files)
+            cv = ShuffleSplit(n_samples, test_size=test_size, train_size=train_size, random_state=0)
+            train_indexes, test_indexes = next(iter(cv))
+            arrays = [self.probe.files, self.gallery.files]
+            self.probe.files_train, self.probe.files_test, self.gallery.files_train, self.gallery.files_test = \
+                list(chain.from_iterable((safe_indexing(a, train_indexes),
+                                          safe_indexing(a, test_indexes)) for a in arrays))
+            return train_indexes, test_indexes
 
-        self.probe.files_train, self.probe.files_test, self.gallery.files_train, self.gallery.files_test = \
-            train_test_split(self.probe.files, self.gallery.files, train_size=train_size, test_size=test_size)
-        return len(self.probe.files_train), len(self.probe.files_test)
-        # TODO: Assuming same gallery and probe size
+            # self.probe.files_train, self.probe.files_test, self.gallery.files_train, self.gallery.files_test = \
+            #     train_test_split(self.probe.files, self.gallery.files, train_size=train_size, test_size=test_size,
+            #                      random_state=0)
+            # TODO: Assuming same gallery and probe size
 
     def unload(self):
         self.probe.unload()

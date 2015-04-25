@@ -4,7 +4,7 @@ __author__ = 'luigolas'
 
 from PyQt4 import QtCore, QtGui, uic
 import os
-import package.comparator as comparator
+import package.feature_matcher as comparator
 
 
 # get the directory of this script

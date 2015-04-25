@@ -14,7 +14,7 @@ class ImageSet(object):
         self.dataset_len = len(self.files)
         if self.dataset_len == 0:
             raise ImagesNotFoundError("At folder " + self.path)
-        # self.images = self.load_images()
+
         self.images_train = []
         self.images_test = []
         self.masks_train = []

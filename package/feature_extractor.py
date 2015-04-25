@@ -141,13 +141,13 @@ class Histogram(FeatureExtractor):
         :param normalization:
         :return:
         """
-
-        # if mask is not None and len(mask):  # Using mask and map
-        #     mask = mask * weight
-        # elif type(weight) != int:
-        #     mask = weight
-        # else:
-        #     mask = None
+        # Using mask and map
+        if mask is not None and len(mask):
+            mask = mask * weight
+        elif type(weight) != int:
+            mask = weight
+        else:
+            mask = None
 
         # mask = weight                       # Using only MAP
 

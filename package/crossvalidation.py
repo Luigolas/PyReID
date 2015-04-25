@@ -1,39 +1,36 @@
-from package.post_ranker import PostRankOptimization
-
 __author__ = 'luigolas'
 
 from package.dataset import Dataset
 import copy
-from operator import itemgetter
 import itertools
 import os
-import cv2
 import time
 import gc
 from package.feature_extractor import Histogram
-from package.image_set import ImageSet
 from package.execution import Execution
 from package.statistics import Statistics
 from package.utilities import InitializationError
 from package.image import CS_BGR
 from package.preprocessing import BTF
-import package.feature_matcher as comparator
+import package.feature_matcher as feature_matcher
 import pandas as pd
+import numpy as np
 
 
 class CrossValidation():
-    def __init__(self):
-        self.executions = []
+    def __init__(self, execution, num_validations=10, train_size=0, test_size=0.5):
+        self.execution = execution
         self.statistics = []
-        # self.post_rankers = []
-        # self._stats_comparative = []
+        self.mean_stat = Statistics()
+        self.num_validations = num_validations
+        self.train_size, self.test_size = train_size, test_size
         self.dataframe = None
 
-    def add_execution(self, execution):
-        if isinstance(execution, Execution):
-            self.executions.append(execution)
-        else:
-            raise TypeError("Must be an Execution object")
+    # def add_execution(self, execution):
+    #     if isinstance(execution, Execution):
+    #         self.executions.append(execution)
+    #     else:
+    #         raise TypeError("Must be an Execution object")
 
     # def add_statistics(self, stat):
     #     if isinstance(stat, Statistics):
@@ -72,7 +69,7 @@ class CrossValidation():
         """
         print("Generating executions...")
         if not segmenter_iter: segmenter_iter = [2]
-        if not compmethods: compmethods = [comparator.HISTCMP_BHATTACHARYYA]
+        if not compmethods: compmethods = [feature_matcher.HISTCMP_BHATTACHARYYA]
         if not dimensions: dimensions = ["1D"]
         if not colorspaces: colorspaces = [CS_BGR]
         if not masks: raise InitializationError("Mask needed")
@@ -107,7 +104,7 @@ class CrossValidation():
             ex.set_feature_extractor(
                 Histogram(colorspace, bins, regions=regions, dimension=dimension, region_name=region_name))
 
-            ex.set_feature_matcher(comparator.HistogramsCompare(method, weights))
+            ex.set_feature_matcher(feature_matcher.HistogramsCompare(method, weights))
             self.executions.append(ex)
         print("%d executions generated" % len(self.executions))
 
@@ -128,22 +125,38 @@ class CrossValidation():
             return ordered_cols
 
         self.dataframe = None
-        self._check_initialization()
-        total = len(self.executions)
-        # time.sleep(5)
-        for val, execution in enumerate(self.executions):
-            print("******** Execution %d of %d ********" % (val + 1, total))
-            r_m = execution.run()
-            statistic = Statistics(execution.dataset, r_m)
-            self.statistics.append(statistic)
+        # self._check_initialization()
+
+        if self.train_size == 0:
+            self.execution.dataset.generate_train_set(train_size=None, test_size=None)
+            print("******** Execution ********")
+            r_m = self.execution.run()
             print("Calculating Statistics")
-            statistic.run()
-            # name = statistic.dict_name()
-            # if self.dataframe is None:
-            #     self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
-            # else:
-            #     self.dataframe = self.dataframe.append(name, ignore_index=True)
-            print(statistic.CMC[19])  # Range 20
+            for val in range(self.num_validations):
+                self.execution.dataset.generate_train_set(train_size=0, test_size=self.test_size)
+                statistic = Statistics()
+                statistic.run(self.execution.dataset, r_m)
+                self.statistics.append(statistic)
+        else:
+            for val in range(self.num_validations):
+                print("******** Execution %d of %d ********" % (val + 1, self.num_validations))
+                self.execution.dataset.generate_train_set(train_size=self.train_size, test_size=self.test_size)
+                r_m = self.execution.run()
+                statistic = Statistics()
+                statistic.run(self.execution.dataset, r_m)
+                self.statistics.append(statistic)
+
+                # name = statistic.dict_name()
+                # if self.dataframe is None:
+                #     self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
+                # else:
+                #     self.dataframe = self.dataframe.append(name, ignore_index=True)
+
+
+        CMCs = np.asarray([stat.CMC for stat in self.statistics])
+        self.mean_stat.CMC = np.sum(CMCs, axis=0) / self.num_validations
+        mean_values = np.asarray([stat.mean_value for stat in self.statistics])
+        self.mean_stat.mean_value = np.mean(mean_values)
 
 
     def _check_initialization(self):

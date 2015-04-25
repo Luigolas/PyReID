@@ -18,10 +18,10 @@ class Dataset(object):
             self.id_regex = "P[1-6]_[0-9]{3}"
         else:  # Default to viper name convection
             self.id_regex = "[0-9]{3}_"
-
-        self.train_indexes, self.test_indexes = self.generate_train_set(train_size, test_size)
-        self.train_size = len(self.train_indexes)
-        self.test_size = len(self.test_indexes)
+        self.train_indexes, self.test_indexes = [], []
+        self.train_size = 0
+        self.test_size = 0
+        self.generate_train_set(train_size, test_size)
 
     def set_probe(self, folder):
         self.probe = ImageSet(folder)
@@ -75,33 +75,42 @@ class Dataset(object):
             raise ValueError("set must be None, \"train\" or \"test\"")
         return self.same_individual(probe_name, gallery_name)
 
-    def generate_train_set(self, train_size=None, test_size=None):
+    def generate_train_set(self, train_size=None, test_size=None, rand_state=None):
         """
 
+
+
+        :param test_size:
+        :param rand_state:
         :param train_size: float or int (default=20)
             If float, should be between 0.0 and 1.0 and represent the
             proportion of the dataset to include in the train split. If
             int, represents the absolute number of train samples.
         :return:
         """
+        # self.probe.clear()
+        # self.gallery.clear()
+
         if train_size is None and test_size is None:
             self.probe.files_train, self.probe.files_test = [], self.probe.files
             self.gallery.files_train, self.gallery.files_test = [], self.gallery.files
-            return [], list(range(0, len(self.probe.files)))
+            self.train_indexes, self.test_indexes = [], list(range(0, len(self.probe.files)))
         else:
             n_samples = len(self.probe.files)
-            cv = ShuffleSplit(n_samples, test_size=test_size, train_size=train_size, random_state=0)
+            cv = ShuffleSplit(n_samples, test_size=test_size, train_size=train_size, random_state=rand_state)
             train_indexes, test_indexes = next(iter(cv))
             arrays = [self.probe.files, self.gallery.files]
             self.probe.files_train, self.probe.files_test, self.gallery.files_train, self.gallery.files_test = \
                 list(chain.from_iterable((safe_indexing(a, train_indexes),
                                           safe_indexing(a, test_indexes)) for a in arrays))
-            return train_indexes, test_indexes
+            self.train_indexes, self.test_indexes = train_indexes, test_indexes
 
-            # self.probe.files_train, self.probe.files_test, self.gallery.files_train, self.gallery.files_test = \
-            #     train_test_split(self.probe.files, self.gallery.files, train_size=train_size, test_size=test_size,
-            #                      random_state=0)
-            # TODO: Assuming same gallery and probe size
+        self.train_size = len(self.train_indexes)
+        self.test_size = len(self.test_indexes)
+        # self.probe.files_train, self.probe.files_test, self.gallery.files_train, self.gallery.files_test = \
+        #     train_test_split(self.probe.files, self.gallery.files, train_size=train_size, test_size=test_size,
+        #                      random_state=0)
+        # TODO: Assuming same gallery and probe size
 
     def unload(self):
         self.probe.unload()

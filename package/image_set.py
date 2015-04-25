@@ -15,12 +15,12 @@ class ImageSet(object):
         if self.dataset_len == 0:
             raise ImagesNotFoundError("At folder " + self.path)
 
+        self.files_train = []
+        self.files_test = []
         self.images_train = []
         self.images_test = []
         self.masks_train = []
         self.masks_test = []
-        self.files_train = []
-        self.files_test = []
         self.regions_train = []
         self.regions_test = []
         self.maps_train = []

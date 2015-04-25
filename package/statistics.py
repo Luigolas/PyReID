@@ -17,16 +17,10 @@ class Statistics():
     Prob admissible range: For each row in Position List calculates if it is lower than a value. Then sum and calculates
                            percentage
     """
-    def __init__(self, dataset, ranking_matrix):
-        self.dataset = dataset
-        # Filter ranking matrix to tests values of dataset
-        if ranking_matrix.shape[0] != len(dataset.test_indexes):
-            self.ranking_matrix = ranking_matrix[self.dataset.test_indexes][:, self.dataset.test_indexes]
-        else:
-            self.ranking_matrix = ranking_matrix
+    def __init__(self):
         self.matching_order = None
         self.CMC = None
-        self.mean_list = None
+        self.mean_value = None
 
         self._name = None
 
@@ -39,12 +33,12 @@ class Statistics():
     # def dict_name(self):
     #     name = self._exec.dict_name()
     #
-    #     if self.mean_list is None:
+    #     if self.mean_value is None:
     #         name.update({"MeanList1": np.NaN, "MeanList2": np.NaN})
     #     else:
-    #         name.update({"MeanList1": self.mean_list[0]})
-    #         if len(self.mean_list) > 1:
-    #             name.update({"MeanList2": self.mean_list[1]})
+    #         name.update({"MeanList1": self.mean_value[0]})
+    #         if len(self.mean_value) > 1:
+    #             name.update({"MeanList2": self.mean_value[1]})
     #
     #     if self.rangeX is not None:
     #         for rangenum, range in zip(self._rangeX_set, self.rangeX):
@@ -56,26 +50,36 @@ class Statistics():
     #
     #     return name
 
-    def run(self):
-        self._calc_matching_order()
-        self._calc_mean_list()
-        self._calcCMC()
+    def run(self, dataset, ranking_matrix):
+        # Filter ranking matrix to tests values of dataset
+        if ranking_matrix.shape[0] != len(dataset.test_indexes):
+            ranking_matrix = self._reshape(ranking_matrix, dataset.test_indexes)
+        else:
+            ranking_matrix = ranking_matrix
 
-    def _calc_matching_order(self):
+        self._calc_matching_order(dataset, ranking_matrix)
+        self._calc_mean_value()
+        self._calcCMC(dataset.test_size)
+
+    def _calc_matching_order(self, dataset, ranking_matrix):
         matching_order = []
-        for elemp, rank_list in enumerate(self.ranking_matrix):
-            for column, elemg in enumerate(rank_list):
-                if self.dataset.same_individual_by_pos(elemp, elemg, set="test"):
-                    matching_order.append(column + 1)  # CMC count from position 1
-                    break
+        try:
+            for elemp, rank_list in enumerate(ranking_matrix):
+                for column, elemg in enumerate(rank_list):
+                    # if dataset.same_individual_by_pos(elemp, np.where(dataset.test_indexes == elemg)[0][0], set="test"):
+                    if dataset.test_indexes[elemp] == elemg:
+                        matching_order.append(column + 1)  # CMC count from position 1
+                        break
+        except IndexError:
+            pass
         self.matching_order = np.asarray(matching_order, np.uint16)
 
-    def _calc_mean_list(self):
-        self.mean_list = np.mean(self.matching_order)
-        # self.mean_list = np.mean(self.matching_order, 1)  # For multiview case
+    def _calc_mean_value(self):
+        self.mean_value = np.mean(self.matching_order)
+        # self.mean_value = np.mean(self.matching_order, 1)  # For multiview case
 
-    def _calcCMC(self):
-        cumfreqs = cumfreq(self.matching_order, numbins=self.dataset.test_size)[0] / (self.dataset.test_size * 0.01)
+    def _calcCMC(self, size):
+        cumfreqs = (cumfreq(self.matching_order, numbins=size)[0] / size) * 100.
         self.CMC = cumfreqs.astype(np.float32)
         # len(self.matching_order[self.matching_order <= admissible]) / float(self.dataset.test_size)
 
@@ -102,3 +106,11 @@ class Statistics():
     #     # Clean and close figure
     #     plt.clf()
     #     plt.close()
+
+    @staticmethod
+    def _reshape(ranking_matrix, test_indexes):
+        ranking_matrix = ranking_matrix[test_indexes]
+        length = ranking_matrix.shape[0]
+        elems = np.in1d(ranking_matrix, test_indexes).reshape(ranking_matrix.shape)
+        ranking_matrix = ranking_matrix[elems]
+        return ranking_matrix.reshape(length, length)

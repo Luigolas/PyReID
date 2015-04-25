@@ -84,7 +84,7 @@ class Execution():
         return name
 
     def run(self):
-        global probeX, galleryY, probeXtest, galleryYtest, probeXtrain, galleryYtrain
+        # global probeX, galleryY, probeXtest, galleryYtest, probeXtrain, galleryYtrain
 
         if sys.gettrace() is None:
             n_jobs = -1

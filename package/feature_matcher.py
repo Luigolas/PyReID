@@ -2,9 +2,10 @@
 # !/usr/bin/env python2
 import cv2
 import math
+import itertools
+import multiprocessing
 import numpy as np
 from sklearn.externals.joblib import Parallel, delayed
-
 
 __author__ = 'luigolas'
 
@@ -16,12 +17,15 @@ HISTCMP_EUCLID = 4
 method_names = ["CORRE", "CHISQ", "INTER", "BHATT", "EUCLI"]
 
 
-def _parallel_match(comp, i1, i2):
-    return comp.match(i1, i2)
+# def _parallel_match(comp, i1, i2):
+#     return comp.match(i1, i2)
+
+def _parallel_match(*args):
+    return args[0][0].match(*args[0][1:][0])
 
 
 class FeatureMatcher(object):
-    def match_dataset(self, dataset, n_jobs=-1):
+    def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1):
         raise NotImplementedError("Please Implement compare _method")
 
     def match(self, ev1, ev2):
@@ -49,13 +53,29 @@ class HistogramsCompare(FeatureMatcher):
         self.name = method_names[self.method]
         self.dict_name = {"Comparator": method_names[self.method]}
 
-    def match_dataset(self, dataset, n_jobs=-1):
+    def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1):
+        """
+
+        :param probe_fe:
+        :param gallery_fe:
+        :param n_jobs:
+        :return:
+        """
         print("   Comparing Histograms")
-        args = ((elem1, elem2) for elem1 in dataset.probe.fe_test for elem2 in dataset.gallery.fe_test)
 
-        results = Parallel(n_jobs)(delayed(_parallel_match)(self, e1, e2) for e1, e2 in args)
+        args = ((elem1, elem2) for elem1 in probe_fe for elem2 in gallery_fe)
+        args = zip(itertools.repeat(self), args)
 
-        comparison_matrix = np.asarray(results, np.float32)
+        if n_jobs == 1:
+            results = Parallel(n_jobs)(delayed(_parallel_match)(e) for e in args)
+            comparison_matrix = np.asarray(results, np.float32)
+        else:
+            if n_jobs == -1:
+                n_jobs = None
+            pool = multiprocessing.Pool(processes=n_jobs)
+            comparison_matrix = np.fromiter(pool.map(_parallel_match, args), np.float32)
+            pool.close()
+            pool.join()
 
         size = math.sqrt(comparison_matrix.shape[0])
         comparison_matrix.shape = (size, size)
@@ -94,6 +114,12 @@ class HistogramsCompare(FeatureMatcher):
         return comp_val
 
     def compareHist(self, h1, h2):
+        """
+
+        :param h1:
+        :param h2:
+        :return:
+        """
         if self.method == HISTCMP_EUCLID:
             return np.linalg.norm(h1 - h2)
         else:
@@ -102,10 +128,11 @@ class HistogramsCompare(FeatureMatcher):
     @staticmethod
     def _check_size_params(hist1, hist2, weights):
         """
-
-        :param hist:
+        
+        :param hist1:
+        :param hist2:
         :param weights:
-        :raise IndexError:
+        :return:
         """
         # if not isinstance(weights, list):
         # raise TypeError("Weights parameter must be a list of values")

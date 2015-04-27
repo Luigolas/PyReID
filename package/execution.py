@@ -96,7 +96,7 @@ class Execution():
         print("Loading dataset images")
         self.dataset.load_images()
 
-        print("Preprocessing")  # Requires Masks already calculated for BTF!!!!
+        print("Preprocessing")
         self._preprocess(n_jobs)
 
         print("Extracting Features")
@@ -156,7 +156,9 @@ class Execution():
         self.feature_extractor.extract_dataset(self.dataset, n_jobs)
 
     def _calc_matching_matrix(self, n_jobs=-1):
-        self.matching_matrix = self.feature_matcher.match_dataset(self.dataset, n_jobs)
+        self.matching_matrix = self.feature_matcher.match_probe_gallery(self.dataset.probe.fe_test,
+                                                                        self.dataset.gallery.fe_test,
+                                                                        n_jobs)
 
     def _calc_ranking_matrix(self):
         import package.feature_matcher as Comparator

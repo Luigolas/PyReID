@@ -128,7 +128,7 @@ class HistogramsCompare(FeatureMatcher):
     @staticmethod
     def _check_size_params(hist1, hist2, weights):
         """
-        
+
         :param hist1:
         :param hist2:
         :param weights:

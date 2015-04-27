@@ -1,11 +1,6 @@
-import os
-
 __author__ = 'luigolas'
 
-from package.utilities import InitializationError
 import numpy as np
-from matplotlib import pyplot as plt
-import itertools
 from scipy.stats import cumfreq
 
 
@@ -53,25 +48,25 @@ class Statistics():
     def run(self, dataset, ranking_matrix):
         # Filter ranking matrix to tests values of dataset
         if ranking_matrix.shape[0] != len(dataset.test_indexes):
-            ranking_matrix = self._reshape(ranking_matrix, dataset.test_indexes)
+            ranking_matrix = self._ranking_matrix_reshape(ranking_matrix, dataset.test_indexes)
         else:
             ranking_matrix = ranking_matrix
 
-        self._calc_matching_order(dataset, ranking_matrix)
+        self._calc_matching_order(ranking_matrix)
         self._calc_mean_value()
         self._calcCMC(dataset.test_size)
 
-    def _calc_matching_order(self, dataset, ranking_matrix):
+    def _calc_matching_order(self, ranking_matrix):
         matching_order = []
-        try:
-            for elemp, rank_list in enumerate(ranking_matrix):
-                for column, elemg in enumerate(rank_list):
-                    # if dataset.same_individual_by_pos(elemp, np.where(dataset.test_indexes == elemg)[0][0], set="test"):
-                    if dataset.test_indexes[elemp] == elemg:
-                        matching_order.append(column + 1)  # CMC count from position 1
-                        break
-        except IndexError:
-            pass
+
+        for elemp, rank_list in enumerate(ranking_matrix):
+            # probe_elem = dataset.test_indexes[elemp]
+            for column, elemg in enumerate(rank_list):
+                # if dataset.same_individual_by_pos(elemp, np.where(dataset.test_indexes == elemg)[0][0],
+                #                                   set="test"):
+                if elemp == elemg:
+                    matching_order.append(column + 1)  # CMC count from position 1
+                    break
         self.matching_order = np.asarray(matching_order, np.uint16)
 
     def _calc_mean_value(self):
@@ -108,9 +103,13 @@ class Statistics():
     #     plt.close()
 
     @staticmethod
-    def _reshape(ranking_matrix, test_indexes):
+    def _ranking_matrix_reshape(ranking_matrix, test_indexes):
         ranking_matrix = ranking_matrix[test_indexes]
         length = ranking_matrix.shape[0]
         elems = np.in1d(ranking_matrix, test_indexes).reshape(ranking_matrix.shape)
         ranking_matrix = ranking_matrix[elems]
-        return ranking_matrix.reshape(length, length)
+        ranking_matrix =  ranking_matrix.reshape(length, length)
+        rm = np.empty_like(ranking_matrix)
+        for pos, val in enumerate(test_indexes):
+            rm[ranking_matrix == val] = pos
+        return rm

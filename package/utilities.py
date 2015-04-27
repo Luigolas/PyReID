@@ -61,6 +61,21 @@ def time_execution(fun, repeats=1):
     print("Min time: --- %s seconds ---" % min(times))
 
 
+class Timer(object):
+    """
+    http://stackoverflow.com/a/5849861/3337586
+    """
+    def __init__(self, name=None):
+        self.name = name
+
+    def __enter__(self):
+        self.tstart = time.time()
+
+    def __exit__(self, type, value, traceback):
+        if self.name:
+            print '[%s]' % self.name,
+        print 'Elapsed: %s' % (time.time() - self.tstart)
+
 # Exceptions definitions
 # =====================
 class InitializationError(Exception):

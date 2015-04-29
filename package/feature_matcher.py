@@ -99,8 +99,8 @@ class HistogramsCompare(FeatureMatcher):
         num_histograms = len(weights)
         hist1 = hists1.reshape((num_histograms, hists1.shape[0] / num_histograms))
         hist2 = hists2.reshape((num_histograms, hists2.shape[0] / num_histograms))
-        # hist1 = np.concatenate((np.asarray([0.] * 36, np.float32), hists1))
-        # hist2 = np.concatenate((np.asarray([0.] * 36, np.float32), hists2))
+        # hist1 = np.concatenate((np.asarray([0.] * 68, np.float32), hists1))
+        # hist2 = np.concatenate((np.asarray([0.] * 68, np.float32), hists2))
         # hist1 = hist1.reshape((num_histograms, hist1.shape[0] / num_histograms))
         # hist2 = hist2.reshape((num_histograms, hist2.shape[0] / num_histograms))
         for h1, h2 in zip(hist1, hist2):

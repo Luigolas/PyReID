@@ -14,8 +14,9 @@ class Statistics():
     """
     def __init__(self):
         self.matching_order = None
-        self.CMC = None
         self.mean_value = None
+        self.CMC = None
+        self.AUC = None
 
         self._name = None
 
@@ -46,6 +47,12 @@ class Statistics():
     #     return name
 
     def run(self, dataset, ranking_matrix):
+        """
+
+        :param dataset:
+        :param ranking_matrix:
+        :return:
+        """
         # Filter ranking matrix to tests values of dataset
         if ranking_matrix.shape[0] != len(dataset.test_indexes):
             ranking_matrix = self._ranking_matrix_reshape(ranking_matrix, dataset.test_indexes)
@@ -55,8 +62,14 @@ class Statistics():
         self._calc_matching_order(ranking_matrix)
         self._calc_mean_value()
         self._calcCMC(dataset.test_size)
+        self._calcAUC(dataset.test_size)
 
     def _calc_matching_order(self, ranking_matrix):
+        """
+
+        :param ranking_matrix:
+        :return:
+        """
         matching_order = []
 
         for elemp, rank_list in enumerate(ranking_matrix):
@@ -70,13 +83,20 @@ class Statistics():
         self.matching_order = np.asarray(matching_order, np.uint16)
 
     def _calc_mean_value(self):
+        """
+
+        :return:
+        """
         self.mean_value = np.mean(self.matching_order)
         # self.mean_value = np.mean(self.matching_order, 1)  # For multiview case
 
-    def _calcCMC(self, size):
-        cumfreqs = (cumfreq(self.matching_order, numbins=size)[0] / size) * 100.
-        self.CMC = cumfreqs.astype(np.float32)
-        # len(self.matching_order[self.matching_order <= admissible]) / float(self.dataset.test_size)
+    def _calcAUC(self, test_size):
+        """
+
+        :param test_size:
+        :return:
+        """
+        self.AUC = (self.CMC.sum() / (test_size * test_size)) * 100.
 
     # def plot_position_list(self, fig_name, zoom=None, show=False):
     #     bins_rank, num_positions = self.position_list.shape
@@ -102,13 +122,19 @@ class Statistics():
     #     plt.clf()
     #     plt.close()
 
+    def _calcCMC(self, size):
+        cumfreqs = (cumfreq(self.matching_order, numbins=size)[0] / size) * 100.
+        self.CMC = cumfreqs.astype(np.float32)
+        # len(self.matching_order[self.matching_order <= admissible]) / float(self.dataset.test_size)
+
     @staticmethod
     def _ranking_matrix_reshape(ranking_matrix, test_indexes):
+        # TODO Optimize or use matching matrix directly
         ranking_matrix = ranking_matrix[test_indexes]
         length = ranking_matrix.shape[0]
         elems = np.in1d(ranking_matrix, test_indexes).reshape(ranking_matrix.shape)
         ranking_matrix = ranking_matrix[elems]
-        ranking_matrix =  ranking_matrix.reshape(length, length)
+        ranking_matrix = ranking_matrix.reshape(length, length)
         rm = np.empty_like(ranking_matrix)
         for pos, val in enumerate(test_indexes):
             rm[ranking_matrix == val] = pos

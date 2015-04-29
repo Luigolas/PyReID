@@ -155,6 +155,7 @@ class CrossValidation():
 
         CMCs = np.asarray([stat.CMC for stat in self.statistics])
         self.mean_stat.CMC = np.sum(CMCs, axis=0) / float(self.num_validations)
+        self.mean_stat.AUC = np.mean([stat.AUC for stat in self.statistics])
         mean_values = np.asarray([stat.mean_value for stat in self.statistics])
         self.mean_stat.mean_value = np.mean(mean_values)
 

@@ -218,6 +218,12 @@ class Grabcut(Preprocessing):
         #                   "Mask": self._mask_name}
 
     def preprocess_dataset(self, dataset, n_jobs=-1):
+        """
+
+        :param dataset:
+        :param n_jobs:
+        :return:
+        """
         print("   Generating Masks (Grabcut)...")
         imgs = dataset.probe.images_train + dataset.probe.images_test
         imgs += dataset.gallery.images_train + dataset.gallery.images_test
@@ -277,14 +283,16 @@ class Grabcut(Preprocessing):
 
 
 class MasksFromMat(Preprocessing):
-    def __init__(self, mat_path, var_name='msk', invert=False):
+    def __init__(self, mat_path, var_name='msk', invert=False, pair_order=True):
         """
 
         :param mat_path: path to .mat file to read
         :param var_name: variable name to look for in mat file
         :param invert: If False, first elements are considered as masks for probe. If True, first elements as gallery
+        :param pair_order: If True, assumes it's order alternatively
         :return:
         """
+        self.pair_order = pair_order
         self.path = mat_path
         self.var_name = var_name
         self.invert = invert
@@ -292,12 +300,14 @@ class MasksFromMat(Preprocessing):
     def preprocess_dataset(self, dataset, n_jobs=-1):
         print("   Loading masks from .mat file")
         masks = loadmat(self.path, variable_names=self.var_name)[self.var_name][0]
+
         if not self.invert:
-            masks_probe = masks[:len(dataset.probe.files)]
-            masks_gallery = masks[len(dataset.probe.files):]
+            masks_probe = masks.take(range(0, masks.size, 2))
+            masks_gallery = masks.take(range(1, masks.size, 2))
         else:
-            masks_gallery = masks[:len(dataset.probe.files)]
-            masks_probe = masks[len(dataset.probe.files):]
+            masks_gallery = masks.take(range(1, masks.size, 2))
+            masks_probe = masks.take(range(0, masks.size, 2))
+
         dataset.probe.masks_train = list(masks_probe[dataset.train_indexes])
         dataset.probe.masks_test = list(masks_probe[dataset.test_indexes])
         dataset.gallery.masks_train = list(masks_gallery[dataset.train_indexes])
@@ -333,6 +343,12 @@ class Silhouette_Partition(Preprocessing):
             raise ValueError("Invalid kernel %s" % kernel)
 
     def preprocess_dataset(self, dataset, n_jobs=-1):
+        """
+
+        :param dataset:
+        :param n_jobs:
+        :return:
+        """
         print("   Calculating Regions and Maps...")
         (self.I, self.J, _) = dataset.probe.images_test[0].shape  # Assumes all images of same shame
         self.deltaI = self.I / 4
@@ -381,20 +397,20 @@ class Silhouette_Partition(Preprocessing):
         # lineHT = np.uint16(fminbound(Silhouette_Partition.dissym_div_Head, self.deltaI * 0.9,
         #                              self.search_range_H[0] - self.deltaI * 1.5, (im_hsv, mask, self.deltaI), 1e-3))
         sim_lineBODY = np.uint16(fminbound(Silhouette_Partition.sym_div, self.search_range_V[0], self.search_range_V[1],
-                                           (im_hsv[0:lineTL+1, :], mask[0:lineTL+1, :], self.deltaJ, self.alpha), 1e-3))
+                                           (im_hsv[0:lineTL + 1, :], mask[0:lineTL + 1, :], self.deltaJ, self.alpha), 1e-3))
         sim_lineLEGS = np.uint16(fminbound(Silhouette_Partition.sym_div, self.search_range_V[0], self.search_range_V[1],
                                            (im_hsv[lineTL:, :], mask[lineTL:, :], self.deltaJ, self.alpha), 1e-3))
         # TODO consider subdivision
         # if self.sub_division > 0:
         #     pass
         # else:
-        regions = np.asarray([(lineHT, lineTL, 0, self.J), (lineTL, self.I, 0, self.J)])
+        regions = np.asarray([(lineHT + 1, lineTL + 1, 0, self.J), (lineTL + 1, self.I, 0, self.J)])
         # regions:           [       region body         ,      region legs           ]
 
         if self.maps_calc:
             # mapHEAD = np.zeros((lineHT, self.J), np.float64)
             mapBODY = self.kernel(sim_lineBODY, self.sigmaBODY, lineTL - lineHT, self.J, self.deviationBODY)
-            mapLEGS = self.kernel(sim_lineLEGS, self.sigmaLEGS, self.I - lineTL, self.J, self.deviationLEGS)
+            mapLEGS = self.kernel(sim_lineLEGS, self.sigmaLEGS, self.I - (lineTL + 1), self.J, self.deviationLEGS)
             # mapFULL = np.concatenate((mapHEAD, mapBODY, mapLEGS))
             maps = [mapBODY, mapLEGS]
             return regions, maps
@@ -441,7 +457,7 @@ class Silhouette_Partition(Preprocessing):
         imgLloc = imgL[:, indexes, :]
         imgRloc = imgR[:, indexes, :][:, ::-1]
         d = alpha * math.sqrt(np.sum((imgLloc - imgRloc) ** 2)) / dimLoc + \
-            (1 - alpha) * (abs(int(np.sum(MSK_L)) - np.sum(MSK_R)) / max([MSK_L.size, MSK_R.size]))
+            (1 - alpha) * abs(int(np.sum(MSK_R)) - np.sum(MSK_L)) / max([MSK_L.size, MSK_R.size])
 
         return d
 

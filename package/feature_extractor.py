@@ -105,9 +105,14 @@ class Histogram(FeatureExtractor):
 
         :param image:
         :param mask:
+        :param regions:
+        :param weights:
+        :param normalization:
         :return:
         """
+
         if self._colorspace and self._colorspace != image.colorspace:
+            # image = image.to_color_space(self._colorspace, normed=True)
             image = image.to_color_space(self._colorspace)
 
         if regions is None:
@@ -134,10 +139,10 @@ class Histogram(FeatureExtractor):
     def calcHistNormalized(self, image, mask, weight, normalization):
         """
 
+
         :param image:
         :param mask:
-        :param weights:
-        :param region:
+        :param weight:
         :param normalization:
         :return:
         """
@@ -164,17 +169,20 @@ class Histogram(FeatureExtractor):
         else:  # 1D case
             hist = []
             for channel, bins in enumerate(self._bins):
-                # print("1D")
                 if bins == 0:
                     continue
                 if type(weight) != int:
                     h = calc_hist(image, channel, mask, bins,
                                   Histogram.color_ranges[image.colorspace][channel*2:channel*2+2])
+                                  # [0., 1.])
+
                 else:
                     h = cv2.calcHist([image], [channel], mask, [bins],
                                      Histogram.color_ranges[image.colorspace][channel*2:channel*2+2])
+                                     # [0., 1.])
 
-                hist.extend(self.normalize_hist(h.astype(np.float32), normalization))
+                # hist.extend(self.normalize_hist(h.astype(np.float32), normalization))
+                hist.extend(h.astype(np.float32))
                 # In 1D case it can't be converted to numpy array as it might have different dimension (bins) sizes
         return hist
 
@@ -212,5 +220,7 @@ def calc_hist(im, ch, weight, bins, hist_range):
     :param hist_range: Range of values on selected channel
     :return:
     """
-    return np.bincount(np.digitize(im[:, :, ch].flatten(), np.linspace(hist_range[0], hist_range[1], bins + 1)[1:-1]),
+    # return np.bincount(np.digitize(im[:, :, ch].flatten(), np.linspace(hist_range[0], hist_range[1], bins + 1)[1:-1]),
+    #                    weights=weight.flatten(), minlength=bins)
+    return np.bincount(np.digitize(im[:, :, ch].flatten(), np.linspace(hist_range[0], hist_range[1], bins)[1:]),
                        weights=weight.flatten(), minlength=bins)

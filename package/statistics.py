@@ -96,7 +96,8 @@ class Statistics():
         :param test_size:
         :return:
         """
-        self.AUC = (self.CMC.sum() / (test_size * test_size)) * 100.
+        self.AUC = self.CMC.sum() / test_size  # CMC already normalized to 0:100
+        # self.AUC = (self.CMC.sum() / (test_size * test_size)) * 100.  # if CMC were not normalized
 
     # def plot_position_list(self, fig_name, zoom=None, show=False):
     #     bins_rank, num_positions = self.position_list.shape

@@ -190,7 +190,7 @@ class PostRankOptimization(object):
 
     def _calc_target_position(self):
         for column, elemg in enumerate(self.rank_list):
-            if self.execution.dataset.same_individual_by_pos(self.subject, elemg, set="test"):
+            if self.execution.dataset.same_individual_by_pos(self.subject, elemg, selected_set="test"):
                 target_position = column  # TODO: If not multiview we could exit loop here
                 self.target_position = target_position
                 break

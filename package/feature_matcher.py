@@ -51,7 +51,7 @@ class HistogramsCompare(FeatureMatcher):
         self.method = comp_method
         self._weights = weights
         self.name = method_names[self.method]
-        self.dict_name = {"Comparator": method_names[self.method]}
+        self.dict_name = {"Matcher": method_names[self.method], "MatchWeights": str(weights)}
 
     def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1):
         """

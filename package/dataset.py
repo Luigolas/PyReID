@@ -2,13 +2,20 @@ __author__ = 'luigolas'
 
 from package.image_set import ImageSet
 import re
-# import numpy as np
-from sklearn.cross_validation import train_test_split, ShuffleSplit
+from sklearn.cross_validation import ShuffleSplit
 from itertools import chain
 from sklearn.utils import safe_indexing
 
 
 class Dataset(object):
+    """
+
+    :param probe:
+    :param gallery:
+    :param train_size:
+    :param test_size:
+    """
+
     def __init__(self, probe=None, gallery=None, train_size=None, test_size=None):
         self.probe = ImageSet(probe)
         self.gallery = ImageSet(gallery)
@@ -24,12 +31,27 @@ class Dataset(object):
         self.generate_train_set(train_size, test_size)
 
     def set_probe(self, folder):
+        """
+
+        :param folder:
+        :return:
+        """
         self.probe = ImageSet(folder)
 
     def set_gallery(self, folder):
+        """
+
+        :param folder:
+        :return:
+        """
         self.gallery = ImageSet(folder)
 
     def set_id_regex(self, regex):
+        """
+
+        :param regex:
+        :return:
+        """
         self.id_regex = regex
 
     def name(self):
@@ -38,7 +60,7 @@ class Dataset(object):
             P2_cam1_P2_cam2_Grabcut2OptimalMask_Histogram_IIP_[5, 5, 5]_6R_3D_BHATT
         :return:
         """
-        name = "%s_%s" % (self.probe.name, self.gallery.name)
+        name = "%s_%s_Train%s_Test%s" % (self.probe.name, self.gallery.name, self.train_size, self.test_size)
 
         return name
 
@@ -57,22 +79,35 @@ class Dataset(object):
         return name
 
     def same_individual(self, probe_name, gallery_name):
+        """
+
+        :param probe_name:
+        :param gallery_name:
+        :return:
+        """
         elem_id1 = re.search(self.id_regex, probe_name).group(0)
         elem_id2 = re.search(self.id_regex, gallery_name).group(0)
         return elem_id1 == elem_id2
 
-    def same_individual_by_pos(self, probe_pos, gallery_pos, set=None):
-        if set == "train":
+    def same_individual_by_pos(self, probe_pos, gallery_pos, selected_set=None):
+        """
+
+        :param probe_pos:
+        :param gallery_pos:
+        :param selected_set:
+        :return:
+        """
+        if selected_set == "train":
             probe_name = self.probe.files_train[probe_pos]
             gallery_name = self.gallery.files_train[gallery_pos]
-        elif set == "test":
+        elif selected_set == "test":
             probe_name = self.probe.files_test[probe_pos]
             gallery_name = self.gallery.files_test[gallery_pos]
-        elif set is None:
+        elif selected_set is None:
             probe_name = self.probe.files[probe_pos]
             gallery_name = self.gallery.files[gallery_pos]
         else:
-            raise ValueError("set must be None, \"train\" or \"test\"")
+            raise ValueError("selected_set must be None, \"train\" or \"test\"")
         return self.same_individual(probe_name, gallery_name)
 
     def generate_train_set(self, train_size=None, test_size=None, rand_state=None):
@@ -112,12 +147,16 @@ class Dataset(object):
         #                      random_state=0)
         # TODO: Assuming same gallery and probe size
 
-    def unload(self):
-        self.probe.unload()
-        self.gallery.unload()
-        del self.gallery
-        del self.probe
-
     def load_images(self):
+        """
+
+        :return:
+        """
         self.probe.load_images()
         self.gallery.load_images()
+
+    # def unload(self):
+    #     self.probe.unload()
+    #     self.gallery.unload()
+    #     del self.gallery
+    #     del self.probe

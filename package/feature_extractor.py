@@ -76,7 +76,6 @@ class Histogram(FeatureExtractor):
 
         self.name = "Histogram_%s_%s_%s" % (colorspace_name[self._colorspace], self._bins, self._dimension)
 
-
     def extract_dataset(self, dataset, n_jobs=-1):
         print("   Calculating Histograms")
         images = dataset.probe.images_train + dataset.probe.images_test
@@ -103,7 +102,7 @@ class Histogram(FeatureExtractor):
 
         args = ((im, mask, region, m) for im, mask, region, m in zip(images, masks, regions, maps))
 
-        results = Parallel(n_jobs)(delayed(_parallel_transform)(self, im, mask, region, m) for im, mask, region, m in args)
+        results = Parallel(n_jobs)(delayed(_parallel_transform)(self, im, mask, reg, m) for im, mask, reg, m in args)
 
         train_len = dataset.train_size
         test_len = dataset.test_size
@@ -130,17 +129,19 @@ class Histogram(FeatureExtractor):
         if regions is None:
             regions = [[0, image.shape[0], 0, image.shape[1]]]
 
-        if weights is None or not len(weights):
-            weights = [1] * len(regions)
-
         histograms = []
-        for region, weight in zip(regions, weights):
+        for region in regions:
             im = image[region[0]:region[1], region[2]:region[3]]
 
             if mask is not None and len(mask):
                 m = mask[region[0]:region[1], region[2]:region[3]]
             else:
                 m = mask
+
+            if weights is not None and len(weights):
+                weight = weights[region[0]:region[1], region[2]:region[3]]
+            else:
+                weight = 1
 
             hist = self.calcHistNormalized(im, m, weight, normalization)
             histograms.append(hist)

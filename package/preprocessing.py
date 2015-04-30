@@ -540,15 +540,15 @@ class GaussianMap(Preprocessing):
 
         im_hsv = im.to_color_space(CS_HSV, normed=True)
 
-        map = []
-        # map = np.zeros_like(mask, dtype=np.float32)
+        # map = []
+        map = np.zeros_like(mask, dtype=np.float32)
         for region, sigma, deviation in zip(regions, self.sigmas, self.deviations):
             lineTop = region[0]
             lineDown = region[1]
             sim_line = np.uint16(fminbound(self.sym_div, self.search_range_V[0], self.search_range_V[1],
                                            (im_hsv[lineTop:lineDown, :], mask[lineTop:lineDown, :], self.deltaJ,
                                             self.alpha), 1e-3))
-            map.append(self.kernel(sim_line, sigma, lineDown - lineTop, self.J, deviation))
+            map[lineTop:lineDown, :] = self.kernel(sim_line, sigma, lineDown - lineTop, self.J, deviation)
 
         return map
 

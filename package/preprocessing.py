@@ -25,7 +25,7 @@ class Preprocessing(object):
         raise NotImplementedError("Please Implement preprocess_dataset method")
 
     # def process_image(self, im, *args):
-    #     raise NotImplementedError("Please Implement process_image method")
+    # raise NotImplementedError("Please Implement process_image method")
 
     def dict_name(self):
         raise NotImplementedError("Please Implement dict_name")
@@ -56,7 +56,7 @@ class BTF(Preprocessing):
         # TODO Consider gMBTF
         # elif self._method == "gMBTF":
         # elements_left = dataset.train_indexes.copy()
-        #     btfs = [np.array([0] * 256), np.array([0] * 256), np.array([0] * 256)]
+        # btfs = [np.array([0] * 256), np.array([0] * 256), np.array([0] * 256)]
         #     count_btfs = 0
         #     while dataset_len(elements_left) > 0:
         #         individual = [elements_left.pop(0)]
@@ -177,7 +177,7 @@ class Illumination_Normalization(Preprocessing):
 
     def preprocess_dataset(self, dataset, n_jobs=1):
         print("   Illumination Normalization...")
-        assert(type(dataset) == Dataset)
+        assert (type(dataset) == Dataset)
 
         imgs = dataset.probe.images_train + dataset.probe.images_test
         imgs += dataset.gallery.images_train + dataset.gallery.images_test
@@ -219,7 +219,7 @@ class Grabcut(Preprocessing):
         self._colorspace = color_space
         self.name = type(self).__name__ + str(self._iter_count) + self._mask_name
         # self.dict_name = {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
-        #                   "Mask": self._mask_name}
+        # "Mask": self._mask_name}
 
     def preprocess_dataset(self, dataset, n_jobs=-1):
         """
@@ -252,7 +252,7 @@ class Grabcut(Preprocessing):
             raise AttributeError("Image must be in BGR color space")
 
         # if app.DB:
-        #     try:
+        # try:
         #         mask = app.DB[self.dbname(im.imgname)]
         #         # print("returning mask for " + imgname + " [0][0:5]: " + str(mask[4][10:25]))
         #         return mask
@@ -280,13 +280,13 @@ class Grabcut(Preprocessing):
         return {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
                 "SegMask": self._mask_name}
 
-    # def dbname(self, imgname):
-    #     class_name = type(self).__name__
-    #     foldername = imgname.split("/")[-2]
-    #     imgname = imgname.split("/")[-1]
-    #     imgname = imgname.split(".")[0]  # Take out file extension
-    #     keys = ["masks", class_name, "iter" + str(self._iter_count), self._mask_name, foldername, imgname]
-    #     return keys
+        # def dbname(self, imgname):
+        # class_name = type(self).__name__
+        #     foldername = imgname.split("/")[-2]
+        #     imgname = imgname.split("/")[-1]
+        #     imgname = imgname.split(".")[0]  # Take out file extension
+        #     keys = ["masks", class_name, "iter" + str(self._iter_count), self._mask_name, foldername, imgname]
+        #     return keys
 
 
 class MasksFromMat(Preprocessing):
@@ -298,6 +298,7 @@ class MasksFromMat(Preprocessing):
     :param pair_order: If True, assumes it's order alternatively
     :return:
     """
+
     def __init__(self, mat_path, var_name='msk', invert=False, pair_order=True):
         self.pair_order = pair_order
         self.path = mat_path
@@ -394,14 +395,15 @@ class SilhouetteRegionsPartition(Preprocessing):
         mask = args[0]
         im_hsv = im.to_color_space(CS_HSV, normed=True)
 
-        lineTL = np.uint16(fminbound(SilhouetteRegionsPartition.dissym_div, self.search_range_H[0], self.search_range_H[1],
-                                     (im_hsv, mask, self.deltaI, self.alpha), 1e-3))
+        lineTL = np.uint16(
+            fminbound(SilhouetteRegionsPartition.dissym_div, self.search_range_H[0], self.search_range_H[1],
+                      (im_hsv, mask, self.deltaI, self.alpha), 1e-3))
         lineHT = np.uint16(fminbound(SilhouetteRegionsPartition.dissym_div_Head, 5,
                                      lineTL, (im_hsv, mask, self.deltaI), 1e-3))
 
         # TODO consider subdivision
         # if self.sub_division > 1:
-        #     pass
+        # pass
         # else:
         regions = np.asarray([(lineHT, lineTL, 0, self.J), (lineTL, self.I, 0, self.J)])
         # regions:           [       region body         ,      region legs           ]
@@ -479,14 +481,17 @@ class VerticalRegionsPartition(Preprocessing):
 
 class GaussianMap(Preprocessing):
     def __init__(self, alpha=0.5, kernel="GMM", sigmas=None, deviations=None):
-        if sigmas is not None:
-            self.sigmas = np.asarray(sigmas)
-        else:
+        if sigmas is None:
             self.sigmas = np.asarray([7.4, 8.7])
-        if deviations is not None:
-            self.deviations = np.asarray(deviations)
-        else:
+        self.sigmas = np.asarray(self.sigmas)
+
+        if deviations is None:
             self.deviations = np.asarray([1., 2.])
+        self.deviations = np.asarray(self.deviations)
+
+        self.sigmas_str = str(self.sigmas)
+        self.deviations_str = str(self.deviations)
+
         self.J = 0
         self.deltaJ = 0
         self.search_range_V = []
@@ -535,25 +540,26 @@ class GaussianMap(Preprocessing):
 
         im_hsv = im.to_color_space(CS_HSV, normed=True)
 
-        maps = []
+        map = []
+        # map = np.zeros_like(mask, dtype=np.float32)
         for region, sigma, deviation in zip(regions, self.sigmas, self.deviations):
             lineTop = region[0]
             lineDown = region[1]
             sim_line = np.uint16(fminbound(self.sym_div, self.search_range_V[0], self.search_range_V[1],
                                            (im_hsv[lineTop:lineDown, :], mask[lineTop:lineDown, :], self.deltaJ,
                                             self.alpha), 1e-3))
-            maps.append(self.kernel(sim_line, sigma, lineDown - lineTop, self.J, deviation))
+            map.append(self.kernel(sim_line, sigma, lineDown - lineTop, self.J, deviation))
 
-        return maps
+        return map
 
     @staticmethod
     def sym_div(i, img, mask, delta, alpha):
         i = int(round(i))
         delta = int(delta)
         imgL = img[:, 0:i]
-        imgR = img[:, (i-1):]
+        imgR = img[:, (i - 1):]
         MSK_L = mask[:, 0:i]
-        MSK_R = mask[:, (i-1):]
+        MSK_R = mask[:, (i - 1):]
 
         dimLoc = delta + 1
         indexes = list(range(dimLoc))
@@ -565,7 +571,10 @@ class GaussianMap(Preprocessing):
         return d
 
     def dict_name(self):
-        return {"Map": self.kernel_name, "MapSigmas": str(self.sigmas), "MapDeviations": str(self.deviations)}
+        name = {"Map": self.kernel_name, "MapSigmas": self.sigmas_str}
+        if self.kernel_name == "GMM":
+            name.update({"MapDeviations": self.deviations_str})
+        return name
 
 
 def _gau_mix_kernel(x, sigma, H, W, dev):

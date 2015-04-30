@@ -109,21 +109,6 @@ class CrossValidation():
         print("%d executions generated" % len(self.executions))
 
     def run(self):
-        def order_cols(cols):
-            """
-            Format of columns to save in Dataframe
-            """
-            # cols = list(self.dataframe.columns.values)
-            ordered_cols = ["Probe", "Gallery", "Preproc", "Segmenter"]
-            ordered_cols.extend(sorted([col for col in cols if "Seg" in col and col != "Segmenter"]))
-            ordered_cols.extend(["Mask", "Feature_Extractor"])
-            ordered_cols.extend(sorted([col for col in cols if "Fe" in col and col != "Feature_Extractor"]))
-            ordered_cols.extend(["Regions", "Comparator"])
-            ordered_cols.extend(sorted([col for col in cols if "Comp" in col and col != "Comparator"]))
-            rest = sorted([item for item in cols if item not in ordered_cols])
-            ordered_cols.extend(rest)
-            return ordered_cols
-
         self.dataframe = None
         # self._check_initialization()
 
@@ -146,42 +131,76 @@ class CrossValidation():
                 statistic.run(self.execution.dataset, r_m)
                 self.statistics.append(statistic)
 
-                # name = statistic.dict_name()
-                # if self.dataframe is None:
-                #     self.dataframe = pd.DataFrame(name, columns=order_cols(list(name.keys())), index=[0])
-                # else:
-                #     self.dataframe = self.dataframe.append(name, ignore_index=True)
-
-
         CMCs = np.asarray([stat.CMC for stat in self.statistics])
         self.mean_stat.CMC = np.sum(CMCs, axis=0) / float(self.num_validations)
         self.mean_stat.AUC = np.mean([stat.AUC for stat in self.statistics])
         mean_values = np.asarray([stat.mean_value for stat in self.statistics])
         self.mean_stat.mean_value = np.mean(mean_values)
+        # Saving results: http://stackoverflow.com/a/19201448/3337586
 
-    def _check_initialization(self):
-        if not self.executions:
-            raise InitializationError
-        if self.statistics:
-            if len(self.executions) != len(self.statistics):
-                if len(self.statistics) != 1:
-                    raise InitializationError
-                else:
-                    for i in range(1, len(self.executions)):
-                        self.statistics.append(copy.copy(self.statistics[0]))
+    # def _check_initialization(self):
+    #     if not self.executions:
+    #         raise InitializationError
+    #     if self.statistics:
+    #         if len(self.executions) != len(self.statistics):
+    #             if len(self.statistics) != 1:
+    #                 raise InitializationError
+    #             else:
+    #                 for i in range(1, len(self.executions)):
+    #                     self.statistics.append(copy.copy(self.statistics[0]))
 
-    def to_csv(self, path):
-        self.dataframe.to_csv(path_or_buf=path, index=False, sep="\t", float_format='%.3f')
-        # pd.DataFrame.to_csv(float_format="")
+    def dict_name(self):
+        """
+
+        :return:
+        """
+        name = {}
+        name.update(self.execution.dict_name())
+        name.update(self.mean_stat.dict_name())
+        name.update({"NumValidations": self.num_validations})
+        return name
+
+    # def to_csv(self, path):
+    #     self.dataframe.to_csv(path_or_buf=path, index=False, sep="\t", float_format='%.3f')
+    #     # pd.DataFrame.to_csv(float_format="")
 
     def to_excel(self, path):
+        """
+
+        :param path:
+        :return:
+        """
+        data = self.dict_name()
+        dataframe = pd.DataFrame(data, columns=self.order_cols(list(data.keys())), index=[0])
+
         if os.path.isfile(path):
             df = pd.read_excel(path)
-            df = pd.concat([df, self.dataframe])
+            df = pd.concat([df, dataframe])
             # df = df.merge(self.dataframe)
-            df.to_excel(excel_writer=path, index=False, float_format='%.3f')
+            df.to_excel(excel_writer=path, index=False, columns=self.order_cols(list(df.keys())), float_format='%.3f')
         else:
-            self.dataframe.to_excel(excel_writer=path, index=False, float_format='%.3f')
-        # pd.DataFrame.to_excel(float_format="")
+            dataframe.to_excel(excel_writer=path, index=False, float_format='%.3f')
 
-
+    @staticmethod
+    def order_cols(cols):
+        """
+        Format of columns to save in Dataframe
+        :param cols:
+        """
+        ordered_cols = ["Probe", "Gallery", "Train", "Test", "Segmenter"]
+        ordered_cols.extend(sorted([col for col in cols if "Seg" in col and col != "Segmenter"]))
+        ordered_cols.extend(["Normalization"])
+        ordered_cols.extend(sorted([col for col in cols if "Norm" in col and col != "Normalization"]))
+        ordered_cols.extend(["BTF", "Regions"])
+        ordered_cols.extend(sorted([col for col in cols if "Reg" in col and col != "Regions"]))
+        ordered_cols.extend(["Map"])
+        ordered_cols.extend(sorted([col for col in cols if "Map" in col and col != "Map"]))
+        ordered_cols.extend(["Feature_Extractor"])
+        ordered_cols.extend(sorted([col for col in cols if "Fe" in col and col != "Feature_Extractor"]))
+        ordered_cols.extend(["FMatcher"])
+        ordered_cols.extend(sorted([col for col in cols if "FM" in col and col != "FMatcher"]))
+        ordered_cols.extend(sorted([col for col in cols if "Range" in col]))
+        ordered_cols.extend(["AUC", "MeanValue", "NumValidations"])
+        rest = sorted([item for item in cols if item not in ordered_cols])
+        ordered_cols.extend(rest)
+        return ordered_cols

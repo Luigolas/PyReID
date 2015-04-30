@@ -26,7 +26,7 @@ def _parallel_match(*args):
 
 class FeatureMatcher(object):
     def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1):
-        raise NotImplementedError("Please Implement compare _method")
+        raise NotImplementedError("Please Implement match_probe_gallery method")
 
     def match(self, ev1, ev2):
         """
@@ -35,7 +35,10 @@ class FeatureMatcher(object):
         :param ev2:
         :raise NotImplementedError:
         """
-        raise NotImplementedError("Please Implement compare _method")
+        raise NotImplementedError("Please Implement match method")
+
+    def dict_name(self):
+        raise NotImplementedError("Please Implement dict_name method")
 
 
 class HistogramsCompare(FeatureMatcher):
@@ -51,7 +54,6 @@ class HistogramsCompare(FeatureMatcher):
         self.method = comp_method
         self._weights = weights
         self.name = method_names[self.method]
-        self.dict_name = {"Matcher": method_names[self.method], "MatchWeights": str(weights)}
 
     def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1):
         """
@@ -146,3 +148,6 @@ class HistogramsCompare(FeatureMatcher):
         elif hist1.shape[0] != hist2.shape[0]:
             raise IndexError(
                 "Size of histograms must be the same. Size1:%d _ Size2:%d" & (hist1.shape[0], hist2.shape[0]))
+
+    def dict_name(self):
+        return {"FMatcher": method_names[self.method], "FMatchWeights": str(self._weights)}

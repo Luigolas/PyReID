@@ -78,9 +78,8 @@ class Execution():
             for preproc in self.preprocessing:
                 name.update(preproc.dict_name())
         name.update(self.dataset.dict_name())
-        # name.update(self.segmenter.dict_name)
-        name.update(self.feature_extractor.dict_name)
-        name.update(self.feature_matcher.dict_name)
+        name.update(self.feature_extractor.dict_name())
+        name.update(self.feature_matcher.dict_name())
         return name
 
     def run(self):

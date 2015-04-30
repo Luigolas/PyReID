@@ -18,33 +18,18 @@ class Statistics():
         self.CMC = None
         self.AUC = None
 
-        self._name = None
+    def dict_name(self, ranges=None):
+        """
 
-    # def name(self):
-    #     if self._name is not None:
-    #         return self._name
-    #     else:
-    #         return self._exec.name()
-    #
-    # def dict_name(self):
-    #     name = self._exec.dict_name()
-    #
-    #     if self.mean_value is None:
-    #         name.update({"MeanList1": np.NaN, "MeanList2": np.NaN})
-    #     else:
-    #         name.update({"MeanList1": self.mean_value[0]})
-    #         if len(self.mean_value) > 1:
-    #             name.update({"MeanList2": self.mean_value[1]})
-    #
-    #     if self.rangeX is not None:
-    #         for rangenum, range in zip(self._rangeX_set, self.rangeX):
-    #             for index, range_elem in enumerate(range):
-    #                 name.update({"Range-%d-%d" % (rangenum, index): range_elem})
-    #     else:
-    #         pass
-    #         # name.update({"ProbAdmissible1": np.NaN, "ProbAdmissible2": np.NaN})
-    #
-    #     return name
+        :param ranges:
+        :return:
+        """
+        if not ranges:
+            ranges = [1, 5, 10, 20, 50]
+        name = {"AUC": self.AUC, "MeanValue": self.mean_value}
+        for r in ranges:
+            name.update({"Range%02d" % r: self.CMC[r - 1]})
+        return name
 
     def run(self, dataset, ranking_matrix):
         """

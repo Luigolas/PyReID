@@ -14,6 +14,12 @@ def _parallel_transform(fe, *args):
 
 class FeatureExtractor(object):
     def extract_dataset(self, dataset, n_jobs):
+        """
+
+        :param dataset:
+        :param n_jobs:
+        :return:
+        """
         raise NotImplementedError("Please Implement extract_dataset method")
 
     def extract(self, image, *args):
@@ -24,6 +30,13 @@ class FeatureExtractor(object):
         :raise NotImplementedError:
         """
         raise NotImplementedError("Please Implement evaluate method")
+
+    def dict_name(self):
+        """
+
+        :return:
+        """
+        raise NotImplementedError("Please Implement dict_name method")
 
 
 class Histogram(FeatureExtractor):
@@ -62,8 +75,7 @@ class Histogram(FeatureExtractor):
         self._dimension = dimension
 
         self.name = "Histogram_%s_%s_%s" % (colorspace_name[self._colorspace], self._bins, self._dimension)
-        self.dict_name = {"Feature_Extractor": "Histogram", "FeColorSpace": colorspace_name[self._colorspace],
-                          "FeBins": str(self._bins), "FeDim": self._dimension}
+
 
     def extract_dataset(self, dataset, n_jobs=-1):
         print("   Calculating Histograms")
@@ -207,6 +219,11 @@ class Histogram(FeatureExtractor):
             cv2.normalize(histogram, histogram, 1, 0, normalization)
 
         return histogram
+
+    def dict_name(self):
+        return {"Feature_Extractor": "Histogram", "FeColorSpace": colorspace_name[self._colorspace],
+                "FeBins": str(self._bins), "FeDim": self._dimension}
+
 
 
 def calc_hist(im, ch, weight, bins, hist_range):

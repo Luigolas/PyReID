@@ -83,8 +83,10 @@ class Execution():
         return name
 
     def run(self):
-        # global probeX, galleryY, probeXtest, galleryYtest, probeXtrain, galleryYtrain
+        """
 
+        :return:
+        """
         if sys.gettrace() is None:
             n_jobs = -1
         else:

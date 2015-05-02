@@ -403,7 +403,8 @@ class SilhouetteRegionsPartition(Preprocessing):
 
         # TODO consider subdivision
         # if self.sub_division > 1:
-        # pass
+        #     incr = lineTL - lineHT / self.sub_divisions
+
         # else:
         regions = np.asarray([(lineHT, lineTL, 0, self.J), (lineTL, self.I, 0, self.J)])
         # regions:           [       region body         ,      region legs           ]

@@ -147,6 +147,19 @@ class Dataset(object):
         #                      random_state=0)
         # TODO: Assuming same gallery and probe size
 
+    def change_probe_and_gallery(self, probe_list, gallery_list):
+        """
+
+        :param probe_list:
+        :param gallery_list:
+        :return:
+        """
+        probe_files = [(idx, f) for idx, f in enumerate(self.probe.files) for pl_elem in probe_list if pl_elem in f]
+        self.probe.files_test = [elem[1] for elem in probe_files]
+        self.test_indexes = [elem[0] for elem in probe_files]
+        self.gallery.files_test = [f for f in self.gallery.files for gl_elem in gallery_list if gl_elem in f]
+        self.test_size = len(self.test_indexes)
+
     def load_images(self):
         """
 

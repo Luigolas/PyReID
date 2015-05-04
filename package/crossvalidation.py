@@ -23,12 +23,15 @@ class CrossValidation():
         self.execution = execution
         self.statistics = []
         self.mean_stat = Statistics()
+
         if splits_file:
-            self.files, self.num_validations, self.train_size, self.test_size = self._read_split_file(splits_file)
+            self.files, self.num_validations, self.test_size = self._read_split_file(splits_file)
         else:
             self.num_validations = num_validations
-            self.train_size, self.test_size = train_size, test_size
+            self.test_size = test_size
             self.files = None
+
+        self.train_size = train_size
         self.dataframe = None
 
     @staticmethod
@@ -77,7 +80,7 @@ class CrossValidation():
                 new_set[1].append(line[1])
         sets.append(new_set)
 
-        return sets, len(sets), 0, len(sets[0][0])
+        return sets, len(sets), len(sets[0][0])
 
     def run(self):
         """
@@ -101,7 +104,8 @@ class CrossValidation():
             for val in range(self.num_validations):
                 print("******** Execution %d of %d ********" % (val + 1, self.num_validations))
                 if self.files:
-                    self.execution.dataset.change_probe_and_gallery(self.files[val][0], self.files[val][1])
+                    self.execution.dataset.change_probe_and_gallery(self.files[val][0], self.files[val][1],
+                                                                    train_size=self.train_size)
                 else:
                     self.execution.dataset.generate_train_set(train_size=self.train_size, test_size=self.test_size)
                 r_m = self.execution.run()
@@ -152,7 +156,7 @@ class CrossValidation():
             df = pd.concat([df, dataframe])
             # df = df.merge(self.dataframe)
             if sorting:
-                cols = sorted([col for col in list(df.columns.values) if "Range" in col])
+                cols = sorted([col for col in list(df.columns.values) if "Range" in col], reverse=True)
                 df.sort(columns=cols, ascending=False, inplace=True)
 
             df.to_excel(excel_writer=path, index=False, columns=self.order_cols(list(df.keys())), float_format='%.3f')

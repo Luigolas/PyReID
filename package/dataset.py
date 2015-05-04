@@ -5,7 +5,7 @@ import re
 from sklearn.cross_validation import ShuffleSplit
 from itertools import chain
 from sklearn.utils import safe_indexing
-
+import numpy as np
 
 class Dataset(object):
     """
@@ -147,7 +147,7 @@ class Dataset(object):
         #                      random_state=0)
         # TODO: Assuming same gallery and probe size
 
-    def change_probe_and_gallery(self, probe_list, gallery_list):
+    def change_probe_and_gallery(self, probe_list, gallery_list, train_size=0):
         """
 
         :param probe_list:
@@ -159,6 +159,17 @@ class Dataset(object):
         self.test_indexes = [elem[0] for elem in probe_files]
         self.gallery.files_test = [f for f in self.gallery.files for gl_elem in gallery_list if gl_elem in f]
         self.test_size = len(self.test_indexes)
+        if train_size > 0:
+            self.train_size = train_size
+            # http://stackoverflow.com/a/15940459/3337586
+            mask = np.in1d(self.probe.files, self.probe.files_test)
+            probe_train_files = [self.probe.files[i] for i in np.where(~mask)[0]]
+            permutation = np.random.RandomState().permutation(len(probe_train_files))
+            ind_test = permutation[:train_size]
+            self.train_indexes = ind_test
+            self.probe.files_train = [probe_train_files[i] for i in ind_test]
+            gallery_train_files = [self.gallery.files[i] for i in np.where(~mask)[0]]
+            self.gallery.files_train = [gallery_train_files[i] for i in ind_test]
 
     def load_images(self):
         """

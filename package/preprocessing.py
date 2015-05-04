@@ -32,7 +32,7 @@ class Preprocessing(object):
 
 
 class BTF(Preprocessing):
-    def __init__(self, method):
+    def __init__(self, method="CBTF"):
         if not (method == "CBTF" or method == "ngMBTF"):  # or method == "gMBTF"
             raise InitializationError("Method " + method + " is not a valid preprocessing method")
         self._method = method
@@ -45,7 +45,10 @@ class BTF(Preprocessing):
         print("   BTF (%s)..." % self._method)
         self.btf = None
         if not dataset.train_size:
-            raise InitializationError("Can't preprocess without train elements")
+            raise InitializationError("Can't preprocess without train_set")
+        if not dataset.probe.masks_train:
+            raise InitializationError("Can't preprocess without mask/segmentation data")
+
         probe_images = dataset.probe.images_train
         probe_masks = dataset.probe.masks_train
         gallery_images = dataset.gallery.images_train
@@ -135,10 +138,10 @@ class BTF(Preprocessing):
     @staticmethod
     def _cummhist(ims, colorspace=image.CS_BGR, masks=None):
         ranges = feature_extractor.Histogram.color_ranges[colorspace]
-        bins = [int(b - a) + 1 for a, b in zip(ranges, ranges[1:])[::2]]  # http://stackoverflow.com/a/5394908/3337586
+        bins = [int(b - a) for a, b in zip(ranges, ranges[1:])[::2]]  # http://stackoverflow.com/a/5394908/3337586
         ev = feature_extractor.Histogram(colorspace, bins=bins, dimension="1D")
 
-        if type(ims) is image.Image:
+        if type(ims) is not list:
             ims = [ims]
         if type(masks) is not list:
             masks = [masks] * len(ims)
@@ -149,7 +152,7 @@ class BTF(Preprocessing):
                  itertools.izip_longest(h, list(result), fillvalue=0)]  # Accumulate with previous histograms
 
         # Normalize each histogram
-        num_channels = len(feature_extractor.Histogram.color_channels[colorspace])
+        num_channels = ims[0].shape[2]
         h = np.asarray(h).reshape(num_channels, len(h) / num_channels)
         return np.asarray(
             [feature_extractor.Histogram.normalize_hist(h_channel.cumsum(), normalization=cv2.NORM_INF) for h_channel
@@ -162,9 +165,9 @@ class BTF(Preprocessing):
                 pixel = im[row, column]
                 for channel, elem in enumerate(pixel):
                     im_converted[row, column, channel] = self.btf[channel][elem]
-        imgname = im.imgname.split(".")
-        imgname = ".".join(imgname[:-1]) + self._method + "." + imgname[-1]
-        return image.Image(im_converted, colorspace=im.colorspace, imgname=imgname)
+        # imgname = im.imgname.split(".")
+        # imgname = ".".join(imgname[:-1]) + self._method + "." + imgname[-1]
+        return image.Image(im_converted, colorspace=im.colorspace, imgname=im.imgname)
 
 
 class Illumination_Normalization(Preprocessing):
@@ -355,7 +358,7 @@ class MasksFromMat(Preprocessing):
 
 
 class SilhouetteRegionsPartition(Preprocessing):
-    def __init__(self, alpha=0.5, sub_divisions=0):
+    def __init__(self, alpha=0.5, sub_divisions=1):
         self.I = 0
         self.J = 0
         self.deltaI = 0
@@ -402,12 +405,33 @@ class SilhouetteRegionsPartition(Preprocessing):
                                      lineTL, (im_hsv, mask, self.deltaI), 1e-3))
 
         # TODO consider subdivision
-        # if self.sub_division > 1:
-        #     incr = lineTL - lineHT / self.sub_divisions
+        if self.sub_divisions > 1:
+            regions = []
+            incr = (lineTL - lineHT) / self.sub_divisions
+            for i in range(self.sub_divisions - 1):
+                top_line = lineHT + incr * i
+                bottom_line = lineHT + incr * (i + 1)
+                regions.append([top_line, bottom_line, 0, self.J])
+            # last region:
+            top_line = regions[-1][1]
+            bottom_line = lineTL
+            regions.append([top_line, bottom_line, 0, self.J])
 
-        # else:
-        regions = np.asarray([(lineHT, lineTL, 0, self.J), (lineTL, self.I, 0, self.J)])
-        # regions:           [       region body         ,      region legs           ]
+            incr = (self.I - lineTL) / self.sub_divisions
+            for i in range(self.sub_divisions - 1):
+                top_line = lineTL + incr * i
+                bottom_line = lineTL + incr * (i + 1)
+                regions.append([top_line, bottom_line, 0, self.J])
+            # last region:
+            top_line = regions[-1][1]
+            bottom_line = self.I
+            regions.append([top_line, bottom_line, 0, self.J])
+
+            pass
+
+        else:
+            regions = np.asarray([(lineHT, lineTL, 0, self.J), (lineTL, self.I, 0, self.J)])
+            # regions:           [       region body         ,      region legs           ]
 
         return regions
 
@@ -562,7 +586,7 @@ class GaussianMap(Preprocessing):
         MSK_L = mask[:, 0:i]
         MSK_R = mask[:, (i - 1):]
 
-        dimLoc = delta + 1
+        dimLoc = delta
         indexes = list(range(dimLoc))
 
         imgLloc = imgL[:, indexes, :]

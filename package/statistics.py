@@ -41,8 +41,6 @@ class Statistics():
         # Filter ranking matrix to tests values of dataset
         if ranking_matrix.shape[0] != len(dataset.test_indexes):
             ranking_matrix = self._ranking_matrix_reshape(ranking_matrix, dataset.test_indexes)
-        else:
-            ranking_matrix = ranking_matrix
 
         self._calc_matching_order(ranking_matrix)
         self._calc_mean_value()

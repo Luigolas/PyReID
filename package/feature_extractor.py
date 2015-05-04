@@ -80,36 +80,40 @@ class Histogram(FeatureExtractor):
         print("   Calculating Histograms")
         images = dataset.probe.images_train + dataset.probe.images_test
         images += dataset.gallery.images_train + dataset.gallery.images_test
+        images = dataset.probe.images_test
+        images += dataset.gallery.images_test
 
         if dataset.probe.masks_test:
-            masks = dataset.probe.masks_train + dataset.probe.masks_test
-            masks += dataset.gallery.masks_train + dataset.gallery.masks_test
+            masks = dataset.probe.masks_test
+            masks += dataset.gallery.masks_test
         else:
-            masks = [None] * (dataset.test_size + dataset.train_size) * 2
+            masks = [None] * (dataset.test_size) * 2
 
         if dataset.probe.regions_test:
-            regions = dataset.probe.regions_train + dataset.probe.regions_test
-            regions += dataset.gallery.regions_train + dataset.gallery.regions_test
+            regions = dataset.probe.regions_test
+            regions += dataset.gallery.regions_test
         else:
-            regions = [None] * (dataset.test_size + dataset.train_size) * 2
+            regions = [None] * (dataset.test_size ) * 2
 
         if dataset.probe.maps_test:
-            maps = dataset.probe.maps_train + dataset.probe.maps_test
-            maps += dataset.gallery.maps_train + dataset.gallery.maps_test
+            maps = dataset.probe.maps_test
+            maps += dataset.gallery.maps_test
         else:
-            maps = [None] * (dataset.test_size + dataset.train_size) * 2
+            maps = [None] * (dataset.test_size) * 2
 
 
         args = ((im, mask, region, m) for im, mask, region, m in zip(images, masks, regions, maps))
 
         results = Parallel(n_jobs)(delayed(_parallel_transform)(self, im, mask, reg, m) for im, mask, reg, m in args)
 
-        train_len = dataset.train_size
+        # train_len = dataset.train_size
         test_len = dataset.test_size
-        dataset.probe.fe_train = np.asarray(results[:train_len])
-        dataset.probe.fe_test = np.asarray(results[train_len:train_len + test_len])
-        dataset.gallery.fe_train = np.asarray(results[train_len + test_len:-test_len])
+        dataset.probe.fe_test = np.asarray(results[:test_len])
         dataset.gallery.fe_test = np.asarray(results[-test_len:])
+        # dataset.probe.fe_train = np.asarray(results[:train_len])
+        # dataset.probe.fe_test = np.asarray(results[train_len:train_len + test_len])
+        # dataset.gallery.fe_train = np.asarray(results[train_len + test_len:-test_len])
+        # dataset.gallery.fe_test = np.asarray(results[-test_len:])
 
     def extract(self, image, mask=None, regions=None, weights=None, normalization=cv2.NORM_MINMAX):
         """
@@ -174,11 +178,13 @@ class Histogram(FeatureExtractor):
         #  All comented, use only mask
 
         if self._dimension == "3D":
-            # TODO fix for bin = 0 and add weighted ?
-            channels = list(range(len(self._bins)))
+            # TODO add weighted ?
+            # channels = list(range(len(self._bins)))
+            channels = numpy.nonzero(self._bins)
+
             hist = cv2.calcHist([image], channels,
                                 mask, self._bins, Histogram.color_ranges[image.colorspace])
-            hist = self.normalize_hist(hist, normalization)
+            # hist = self.normalize_hist(hist, normalization)
         else:  # 1D case
             hist = []
             for channel, bins in enumerate(self._bins):
@@ -224,7 +230,6 @@ class Histogram(FeatureExtractor):
     def dict_name(self):
         return {"Feature_Extractor": "Histogram", "FeColorSpace": colorspace_name[self._colorspace],
                 "FeBins": str(self._bins), "FeDim": self._dimension}
-
 
 
 def calc_hist(im, ch, weight, bins, hist_range):

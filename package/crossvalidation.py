@@ -26,10 +26,13 @@ class CrossValidation():
 
         if splits_file:
             self.files, self.num_validations, self.test_size = self._read_split_file(splits_file)
+            self.execution.dataset.change_probe_and_gallery(self.files[0][0], self.files[0][1],
+                                                            train_size=train_size)
         else:
             self.num_validations = num_validations
             self.test_size = test_size
             self.files = None
+            self.execution.dataset.generate_train_set(train_size=train_size, test_size=self.test_size)
 
         self.train_size = train_size
         self.dataframe = None
@@ -120,20 +123,36 @@ class CrossValidation():
         self.mean_stat.mean_value = np.mean(mean_values)
         # Saving results: http://stackoverflow.com/a/19201448/3337586
 
-    def dict_name(self):
+    def dict_name(self, with_stats=True):
         """
 
         :return:
         """
         name = {}
         name.update(self.execution.dict_name())
-        name.update(self.mean_stat.dict_name())
+        if with_stats:
+            name.update(self.mean_stat.dict_name())
         name.update({"NumValidations": self.num_validations})
         return name
 
     # def to_csv(self, path):
     #     self.dataframe.to_csv(path_or_buf=path, index=False, sep="\t", float_format='%.3f')
     #     # pd.DataFrame.to_csv(float_format="")
+
+    def id(self):
+        to_encode = str(self.dict_name(False)) + str([type(i).__name__ for i in self.execution.preprocessing])
+        return str(abs(hash(to_encode)))
+
+    def id_is_saved(self, db_file, id=None):
+        if not id:
+            id = self.id()
+
+        db = shelve.open(db_file, protocol=pickle.HIGHEST_PROTOCOL)
+        try:
+            val = db.has_key(str(id))
+        finally:
+            db.close()
+        return val
 
     def to_excel(self, path, with_id=False, sorting=False):
         """
@@ -146,7 +165,8 @@ class CrossValidation():
         data = self.dict_name()
         dataframe = pd.DataFrame(data, columns=self.order_cols(list(data.keys())), index=[0])
         if with_id:
-            data_id = random.randint(0, 1000000000)
+            # data_id = random.randint(0, 1000000000)
+            data_id = self.id()
             dataframe['id'] = data_id
         else:
             data_id = None
@@ -180,6 +200,7 @@ class CrossValidation():
             db[str(data_id)] = data
         finally:
             db.close()
+        return data
 
     @staticmethod
     def load_stats(db_file, data_id):
@@ -192,6 +213,8 @@ class CrossValidation():
         db = shelve.open(db_file, protocol=pickle.HIGHEST_PROTOCOL, flag='r')
         try:
             data = db[str(data_id)]
+        except KeyError:
+            data = None
         finally:
             db.close()
 

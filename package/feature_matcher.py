@@ -25,7 +25,7 @@ def _parallel_match(*args):
 
 
 class FeatureMatcher(object):
-    def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1):
+    def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1, verbosity=2):
         raise NotImplementedError("Please Implement match_probe_gallery method")
 
     def match(self, ev1, ev2):
@@ -55,7 +55,7 @@ class HistogramsCompare(FeatureMatcher):
         self._weights = weights
         self.name = method_names[self.method]
 
-    def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1):
+    def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1, verbosity=2):
         """
 
         :param probe_fe:
@@ -63,7 +63,7 @@ class HistogramsCompare(FeatureMatcher):
         :param n_jobs:
         :return:
         """
-        print("   Comparing Histograms")
+        if verbosity > 1: print("   Comparing Histograms")
 
         args = ((elem1, elem2) for elem1 in probe_fe for elem2 in gallery_fe)
         args = zip(itertools.repeat(self), args)

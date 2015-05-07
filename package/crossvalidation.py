@@ -85,7 +85,7 @@ class CrossValidation():
 
         return sets, len(sets), len(sets[0][0])
 
-    def run(self):
+    def run(self, verbosity=2):
         """
 
         :return:
@@ -95,9 +95,9 @@ class CrossValidation():
 
         if self.train_size == 0 and not self.files:
             self.execution.dataset.generate_train_set(train_size=None, test_size=None)
-            print("******** Execution ********")
-            r_m = self.execution.run()
-            print("Calculating Statistics")
+            if verbosity >= 0: print("******** Execution 1 of 1 ********")
+            r_m = self.execution.run(verbosity)
+            if verbosity > 0: print("Calculating Statistics")
             for val in range(self.num_validations):
                 self.execution.dataset.generate_train_set(train_size=0, test_size=self.test_size)
                 statistic = Statistics()
@@ -105,13 +105,14 @@ class CrossValidation():
                 self.statistics.append(statistic)
         else:
             for val in range(self.num_validations):
-                print("******** Execution %d of %d ********" % (val + 1, self.num_validations))
+                if verbosity >= 0: print("******** Execution %d of %d ********" % (val + 1, self.num_validations))
                 if self.files:
                     self.execution.dataset.change_probe_and_gallery(self.files[val][0], self.files[val][1],
                                                                     train_size=self.train_size)
                 else:
                     self.execution.dataset.generate_train_set(train_size=self.train_size, test_size=self.test_size)
-                r_m = self.execution.run()
+                r_m = self.execution.run(verbosity)
+                if verbosity > 0: print("Calculating Statistics")
                 statistic = Statistics()
                 statistic.run(self.execution.dataset, r_m)
                 self.statistics.append(statistic)
@@ -121,16 +122,20 @@ class CrossValidation():
         self.mean_stat.AUC = np.mean([stat.AUC for stat in self.statistics])
         mean_values = np.asarray([stat.mean_value for stat in self.statistics])
         self.mean_stat.mean_value = np.mean(mean_values)
-        # Saving results: http://stackoverflow.com/a/19201448/3337586
+        if verbosity > 2:
+            print "Range 20: %f" % self.mean_stat.CMC[19]
+            print "AUC: %f" % self.mean_stat.AUC
 
-    def dict_name(self, with_stats=True):
+    def dict_name(self, use_stats=True):
         """
 
+
+        :param use_stats:
         :return:
         """
         name = {}
         name.update(self.execution.dict_name())
-        if with_stats:
+        if use_stats:
             name.update(self.mean_stat.dict_name())
         name.update({"NumValidations": self.num_validations})
         return name

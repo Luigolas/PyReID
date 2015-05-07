@@ -21,7 +21,7 @@ def _parallel_preprocess(preproc, im, *args):
 
 
 class Preprocessing(object):
-    def preprocess_dataset(self, dataset, n_jobs=-1):
+    def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         raise NotImplementedError("Please Implement preprocess_dataset method")
 
     # def process_image(self, im, *args):
@@ -41,8 +41,8 @@ class BTF(Preprocessing):
     def dict_name(self):
         return {"BTF": self._method}
 
-    def preprocess_dataset(self, dataset, n_jobs=-1):
-        print("   BTF (%s)..." % self._method)
+    def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
+        if verbosity > 1: print("   BTF (%s)..." % self._method)
         self.btf = None
         if not dataset.train_size:
             raise InitializationError("Can't preprocess without train_set")
@@ -178,8 +178,8 @@ class Illumination_Normalization(Preprocessing):
         else:  # CS_YCrCb
             self.channel = 0
 
-    def preprocess_dataset(self, dataset, n_jobs=1):
-        print("   Illumination Normalization...")
+    def preprocess_dataset(self, dataset, n_jobs=1, verbosity=2):
+        if verbosity > 1: print("   Illumination Normalization...")
         assert (type(dataset) == Dataset)
 
         imgs = dataset.probe.images_train + dataset.probe.images_test
@@ -224,14 +224,14 @@ class Grabcut(Preprocessing):
         # self.dict_name = {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
         # "Mask": self._mask_name}
 
-    def preprocess_dataset(self, dataset, n_jobs=-1):
+    def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         """
 
         :param dataset:
         :param n_jobs:
         :return:
         """
-        print("   Generating Masks (Grabcut)...")
+        if verbosity > 1: print("   Generating Masks (Grabcut)...")
         imgs = dataset.probe.images_train + dataset.probe.images_test
         imgs += dataset.gallery.images_train + dataset.gallery.images_test
         results = Parallel(n_jobs)(delayed(_parallel_preprocess)(self, im) for im in imgs)
@@ -309,14 +309,14 @@ class MasksFromMat(Preprocessing):
         self.invert = invert
         self.name = None
 
-    def preprocess_dataset(self, dataset, n_jobs=-1):
+    def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         """
 
         :param dataset:
         :param n_jobs:
         :return:
         """
-        print("   Loading masks from .mat file")
+        if verbosity > 1: print("   Loading masks from .mat file")
         data = loadmat(self.path)
         masks = data[self.var_name][0]
         try:
@@ -367,14 +367,14 @@ class SilhouetteRegionsPartition(Preprocessing):
         self.alpha = alpha
         self.sub_divisions = int(sub_divisions)
 
-    def preprocess_dataset(self, dataset, n_jobs=-1):
+    def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         """
 
         :param dataset:
         :param n_jobs:
         :return:
         """
-        print("   Calculating Silhouette Regions...")
+        if verbosity > 1: print("   Calculating Silhouette Regions...")
         (self.I, self.J, _) = dataset.probe.images_test[0].shape  # Assumes all images of same shape
         self.deltaI = self.I / 4
 
@@ -485,8 +485,8 @@ class VerticalRegionsPartition(Preprocessing):
         else:
             self.regions_name = regions_name
 
-    def preprocess_dataset(self, dataset, n_jobs=-1):
-        print("   Generating Vertical regions...")
+    def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
+        if verbosity > 1: print("   Generating Vertical regions...")
         # [[0, 16], [16, 33], [33, 50], [50, 67], [67, 84], [84, 100]] #  Over 100% size, not actual image size
         (I, J, _) = dataset.probe.images_test[0].shape
         regions = []
@@ -529,8 +529,8 @@ class GaussianMap(Preprocessing):
         else:
             raise ValueError("Invalid kernel %s" % kernel)
 
-    def preprocess_dataset(self, dataset, n_jobs=-1):
-        print("   Calculating %s Maps..." % self.kernel_name)
+    def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
+        if verbosity > 1: print("   Calculating %s Maps..." % self.kernel_name)
         (_, self.J, _) = dataset.probe.images_test[0].shape  # Assumes all images of same shame
         self.deltaJ = self.J / 3
         self.deviations = self.sigmas / self.deviations

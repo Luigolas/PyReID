@@ -82,9 +82,11 @@ class Execution():
         name.update(self.feature_matcher.dict_name())
         return name
 
-    def run(self):
+    def run(self, verbosity=2):
         """
 
+
+        :param verbosity:
         :return:
         """
         if sys.gettrace() is None:
@@ -94,24 +96,24 @@ class Execution():
 
         self._check_initialization()
 
-        print("Loading dataset images")
+        if verbosity > 0: print("Loading dataset images")
         self.dataset.load_images()
 
-        print("Preprocessing")
-        self._preprocess(n_jobs)
+        if verbosity > 0: print("Preprocessing")
+        self._preprocess(n_jobs, verbosity)
 
-        print("Extracting Features")
-        self._extract_dataset(n_jobs)
+        if verbosity > 0: print("Extracting Features")
+        self._extract_dataset(n_jobs, verbosity)
 
         # Calculate Comparison matrix
-        print("Matching Features")
-        self._calc_matching_matrix(n_jobs)
+        if verbosity > 0: print("Matching Features")
+        self._calc_matching_matrix(n_jobs, verbosity)
 
         # Calculate Ranking matrix
-        print("Calculating Ranking Matrix")
+        if verbosity > 0: print("Calculating Ranking Matrix")
         ranking_matrix = self._calc_ranking_matrix()
 
-        print("Execution Finished")
+        if verbosity > 0: print("Execution Finished")
         return ranking_matrix
 
     def unload(self):
@@ -146,20 +148,20 @@ class Execution():
         if self.feature_matcher is None:
             raise InitializationError("feature_matcher not initialized")
 
-    def _preprocess(self, n_jobs=1):
+    def _preprocess(self, n_jobs=1, verbosity=2):
         if not self.preprocessing:
             return
         else:
             for preproc in self.preprocessing:
-                preproc.preprocess_dataset(self.dataset, n_jobs)
+                preproc.preprocess_dataset(self.dataset, n_jobs, verbosity)
 
-    def _extract_dataset(self, n_jobs=-1):
-        self.feature_extractor.extract_dataset(self.dataset, n_jobs)
+    def _extract_dataset(self, n_jobs=-1, verbosity=2):
+        self.feature_extractor.extract_dataset(self.dataset, n_jobs, verbosity)
 
-    def _calc_matching_matrix(self, n_jobs=-1):
+    def _calc_matching_matrix(self, n_jobs=-1, verbosity=2):
         self.matching_matrix = self.feature_matcher.match_probe_gallery(self.dataset.probe.fe_test,
                                                                         self.dataset.gallery.fe_test,
-                                                                        n_jobs)
+                                                                        n_jobs, verbosity)
 
     def _calc_ranking_matrix(self):
         import package.feature_matcher as Comparator

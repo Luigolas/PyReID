@@ -27,16 +27,17 @@ def split_every(n, it):
     """
     return takewhile(bool, (list(islice(it, n)) for _ in count(0)))
 
+
 # split_every = (lambda n, it:
-#                 takewhile(bool, (list(islice(it, n)) for _ in count(0))))
+# takewhile(bool, (list(islice(it, n)) for _ in count(0))))
 
 
 def chunks(iterable, n):
     """assumes n is an integer>0
     """
-    iterable=iter(iterable)
+    iterable = iter(iterable)
     while True:
-        result=[]
+        result = []
         for i in range(n):
             try:
                 a = next(iterable)
@@ -61,10 +62,29 @@ def time_execution(fun, repeats=1):
     print("Min time: --- %s seconds ---" % min(times))
 
 
+def send_mail_by_gmail(user, password, files=None, subject="FluentMail", body=""):
+    from fluentmail import FluentMail, TLS
+    print "Sending mail: %s" % subject
+
+    mail = FluentMail('smtp.gmail.com', 587, TLS)
+
+    mail = mail.credentials(user, password) \
+        .from_address(user) \
+        .to(user) \
+        .subject(subject) \
+        .body(body, 'utf-8')
+    if files:
+        for f in files:
+            mail.attach(f)
+    mail.send()
+    # .body(u'<h2>Hi, I\'m FluentMail.<h2>', 'utf-8') \
+
+
 class Timer(object):
     """
     http://stackoverflow.com/a/5849861/3337586
     """
+
     def __init__(self, name=None):
         self.name = name
 
@@ -75,6 +95,7 @@ class Timer(object):
         if self.name:
             print '[%s]' % self.name,
         print 'Elapsed: %s' % (time.time() - self.tstart)
+
 
 # Exceptions definitions
 # =====================

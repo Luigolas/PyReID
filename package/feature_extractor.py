@@ -64,14 +64,10 @@ class Histogram(FeatureExtractor):
                 bins = [bins] * 2
             elif color_space == CS_IIP:
                 bins = [bins] * 3
-        #
-        # elif 0 in bins:
-        #     index = bins.index(0)
-        #     self.color_channels =
-        # if len(bins) > len(Histogram.color_channels[color_space]):
-        #     raise IndexError("Size of bins incorrect for colorspace " + str(color_space))
 
-        self._bins = bins
+        self._channels = [i for i, e in enumerate(bins) if e != 0]
+        self._bins = [i for i in bins if i != 0]
+
         if not isinstance(dimension, str) or not (dimension == "1D" or dimension == "3D"):
             raise AttributeError("Dimension must be \"1D\" or \"3D\"")
         self._dimension = dimension
@@ -181,7 +177,7 @@ class Histogram(FeatureExtractor):
 
         if self._dimension == "3D":
             # TODO add weighted ?
-            # channels = list(range(len(self._bins)))
+            # _channels = list(range(len(self._bins)))
             channels = numpy.nonzero(self._bins)
 
             hist = cv2.calcHist([image], channels,
@@ -189,9 +185,7 @@ class Histogram(FeatureExtractor):
             # hist = self.normalize_hist(hist, normalization)
         else:  # 1D case
             hist = []
-            for channel, bins in enumerate(self._bins):
-                if bins == 0:
-                    continue
+            for channel, bins in zip(self._channels, self._bins):
                 if type(weight) != int:
                     h = calc_hist(image, channel, mask, bins,
                                   Histogram.color_ranges[image.colorspace][channel*2:channel*2+2])
@@ -238,7 +232,7 @@ def calc_hist(im, ch, weight, bins, hist_range):
     """
     Inspiration: https://gist.github.com/nkeim/4455635
     Fast 1D histogram calculation. Must have all values initialized
-    :param im: image to calculate histogram. Must be os shape (Height, Width, channels)
+    :param im: image to calculate histogram. Must be os shape (Height, Width, _channels)
     :param ch: channel to calculate histogram
     :param weight: weight map for values on histogram. Must be of shape (Height, Width) and float type
     :param bins: Numbers of bins for histogram

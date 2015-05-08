@@ -66,6 +66,7 @@ class Histogram(FeatureExtractor):
                 bins = [bins] * 3
 
         self._channels = [i for i, e in enumerate(bins) if e != 0]
+        self._original_bins = bins
         self._bins = [i for i in bins if i != 0]
 
         if not isinstance(dimension, str) or not (dimension == "1D" or dimension == "3D"):
@@ -225,7 +226,7 @@ class Histogram(FeatureExtractor):
 
     def dict_name(self):
         return {"Feature_Extractor": "Histogram", "FeColorSpace": colorspace_name[self._colorspace],
-                "FeBins": str(self._bins), "FeDim": self._dimension}
+                "FeBins": str(self._original_bins), "FeDim": self._dimension}
 
 
 def calc_hist(im, ch, weight, bins, hist_range):

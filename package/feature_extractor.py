@@ -76,7 +76,8 @@ class Histogram(FeatureExtractor):
         self.name = "Histogram_%s_%s_%s" % (colorspace_name[self._colorspace], self._bins, self._dimension)
 
     def extract_dataset(self, dataset, n_jobs=-1, verbosity=2):
-        if verbosity > 1: print("   Calculating Histograms")
+        if verbosity > 1: print("   Calculating Histograms %s, %s" % (colorspace_name[self._colorspace],
+                                                                      str(self._original_bins)))
         images = dataset.probe.images_train + dataset.probe.images_test
         images += dataset.gallery.images_train + dataset.gallery.images_test
         images = dataset.probe.images_test

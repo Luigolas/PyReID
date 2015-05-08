@@ -34,7 +34,7 @@ class CrossValidation():
             self.files = None
             self.execution.dataset.generate_train_set(train_size=train_size, test_size=self.test_size)
 
-        self.train_size = train_size
+        self.train_size = self.execution.dataset.train_size
         self.dataframe = None
 
     @staticmethod
@@ -231,14 +231,18 @@ class CrossValidation():
         Format of columns to save in Dataframe
         :param cols:
         """
-        ordered_cols = ["Probe", "Gallery", "Train", "Test", "Segmenter"]
-        ordered_cols.extend(sorted([col for col in cols if "Seg" in col and col != "Segmenter"]))
-        ordered_cols.extend(["Normalization"])
-        ordered_cols.extend(sorted([col for col in cols if "Norm" in col and col != "Normalization"]))
-        ordered_cols.extend(["BTF", "Regions"])
-        ordered_cols.extend(sorted([col for col in cols if "Reg" in col and col != "Regions"]))
-        ordered_cols.extend(["Map"])
-        ordered_cols.extend(sorted([col for col in cols if "Map" in col and col != "Map"]))
+        ordered_cols = ["Probe", "Gallery", "Train", "Test"]
+        ordered_cols.extend(sorted([col for col in cols if "Preproc" in col]))
+
+        # ordered_cols = ["Probe", "Gallery", "Train", "Test", "Segmenter"]
+        # ordered_cols.extend(sorted([col for col in cols if "Seg" in col and col != "Segmenter"]))
+        # ordered_cols.extend(["Normalization"])
+        # ordered_cols.extend(sorted([col for col in cols if "Norm" in col and col != "Normalization"]))
+        # ordered_cols.extend(["BTF", "Regions"])
+        # ordered_cols.extend(sorted([col for col in cols if "Reg" in col and col != "Regions"]))
+        # ordered_cols.extend(["Map"])
+        # ordered_cols.extend(sorted([col for col in cols if "Map" in col and col != "Map"]))
+
         ordered_cols.extend(["Feature_Extractor"])
         ordered_cols.extend(sorted([col for col in cols if "Fe" in col and col != "Feature_Extractor"]))
         ordered_cols.extend(["FMatcher"])

@@ -12,7 +12,6 @@ from package import feature_extractor
 from scipy.stats import norm
 from scipy.io.matlab import loadmat
 
-
 __author__ = 'luigolas'
 
 
@@ -207,7 +206,8 @@ class Illumination_Normalization(Preprocessing):
             colorspace = "HSV"
         else:  # CS_YCrCb
             colorspace = "YCrCb"
-        return {"Normalization": "IluNorm_%s" % colorspace}
+        # return {"Normalization": "IluNorm_%s" % colorspace}
+        return {"name": "IluNorm_%s" % colorspace}
 
 
 class Grabcut(Preprocessing):
@@ -280,8 +280,9 @@ class Grabcut(Preprocessing):
         """
         :return: dictionary
         """
-        return {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
-                "SegMask": self._mask_name}
+        # return {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
+        #         "SegMask": self._mask_name}
+        return {"name": str(type(self).__name__), "params": str([self._iter_count, self._mask_name])}
 
         # def dbname(self, imgname):
         # class_name = type(self).__name__
@@ -302,12 +303,30 @@ class MasksFromMat(Preprocessing):
     :return:
     """
 
-    def __init__(self, mat_path, var_name='msk', invert=False, pair_order=True):
-        self.pair_order = pair_order
+    def __init__(self, mat_path, var_name='msk', invert=False):
+        # self.pair_order = pair_order
         self.path = mat_path
         self.var_name = var_name
         self.invert = invert
-        self.name = None
+        self.name = self._read_name_from_mat()
+
+    def _read_name_from_mat(self):
+        data = loadmat(self.path)
+        try:
+            name = data['msk_name'][0]
+            keys = name.dtype.names
+            dict_name = {}
+            for key in keys:
+                value = name[0][key]
+                if value.dtype == int:
+                    value = int(value[0])
+                else:
+                    value = str(value[0])
+                dict_name.update({key: value})
+        except KeyError:
+            dict_name = None
+        return dict_name
+
 
     def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         """
@@ -319,19 +338,6 @@ class MasksFromMat(Preprocessing):
         if verbosity > 1: print("   Loading masks from .mat file")
         data = loadmat(self.path)
         masks = data[self.var_name][0]
-        try:
-            name = data['msk_name'][0]
-            keys = name.dtype.names
-            self.name = {}
-            for key in keys:
-                value = name[0][key]
-                if value.dtype == int:
-                    value = int(value[0])
-                else:
-                    value = str(value[0])
-                self.name.update({key: value})
-        except KeyError:
-            self.name = None
 
         if not self.invert:
             masks_probe = masks.take(range(0, masks.size, 2))
@@ -354,7 +360,8 @@ class MasksFromMat(Preprocessing):
             return self.name
         else:
             name = self.path.split("/")[-1]
-            return {"Segmenter": str(type(self).__name__), "SegMask": name}
+            # return {"Segmenter": str(type(self).__name__), "SegMask": name}
+            return {"name": str(type(self).__name__), "params": str([name])}
 
 
 class SilhouetteRegionsPartition(Preprocessing):
@@ -471,7 +478,8 @@ class SilhouetteRegionsPartition(Preprocessing):
                      - np.sum(MSK_D[localderD]))
 
     def dict_name(self):
-        return {"Regions": str(type(self).__name__), "RegAlpha": self.alpha, "RegCount": 2 * self.sub_divisions}
+        # return {"Regions": str(type(self).__name__), "RegAlpha": self.alpha, "RegCount": 2 * self.sub_divisions}
+        return {"name": str(type(self).__name__), "params": str([self.alpha, 2 * self.sub_divisions])}
 
 
 class VerticalRegionsPartition(Preprocessing):
@@ -501,7 +509,8 @@ class VerticalRegionsPartition(Preprocessing):
         dataset.gallery.regions_trains = regions_train
 
     def dict_name(self):
-        return {"Regions": self.regions_name, "RegCount": len(self.regions)}
+        # return {"Regions": self.regions_name, "RegCount": len(self.regions)}
+        return {"name": self.regions_name, "params": str([len(self.regions)])}
 
 
 class GaussianMap(Preprocessing):
@@ -596,9 +605,12 @@ class GaussianMap(Preprocessing):
         return d
 
     def dict_name(self):
-        name = {"Map": self.kernel_name, "MapSigmas": self.sigmas_str}
+        # name = {"Map": self.kernel_name, "MapSigmas": self.sigmas_str}
+        name = {"name": self.kernel_name, "params": [self.sigmas_str]}
         if self.kernel_name == "GMM":
-            name.update({"MapDeviations": self.deviations_str})
+            # name.update({"MapDeviations": self.deviations_str})
+            name["params"].append(self.deviations_str)
+        name["params"] = str(name["params"])
         return name
 
 

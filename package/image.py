@@ -165,6 +165,7 @@ class Image(np.ndarray):
 
         # img_iip = np.empty_like(src_xyz, np.float32)
 
+        # http://stackoverflow.com/a/25922418/3337586
         img_iip = np.einsum('ij,klj->kli', iipB, src_xyz)
         img_iip = safe_ln(img_iip)
         img_iip = np.einsum('ij,klj->kli', iipA, img_iip)
@@ -176,7 +177,7 @@ class Image(np.ndarray):
         #         # element = (element - iip_min)/(iip_max - iip_min)  # Normalized to 0.0 ; 1.0
         #         # element = np.around(element, decimals=6)  # Remove some "extreme" precision
         #         img_iip[row_index][columm_index] = element
-        img_iip = Image(img_iip, CS_IIP, self.imgname)
+        img_iip = Image(img_iip.astype(np.float32), CS_IIP, self.imgname)
         return img_iip
 
     def _bgr2hsv(self, normed=False):

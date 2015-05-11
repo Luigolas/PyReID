@@ -165,14 +165,17 @@ class Image(np.ndarray):
 
         img_iip = np.empty_like(src_xyz, np.float32)
 
-        for row_index, row in enumerate(src_xyz):
-            for columm_index, element in enumerate(row):
-                element = np.dot(iipB, element)
-                element = safe_ln(element)  # element = np.log(element)
-                element = np.dot(iipA, element)
-                # element = (element - iip_min)/(iip_max - iip_min)  # Normalized to 0.0 ; 1.0
-                # element = np.around(element, decimals=6)  # Remove some "extreme" precision
-                img_iip[row_index][columm_index] = element
+        img_iip = np.einsum('ij,klj->kli', iipB, src_xyz)
+        img_iip = safe_ln(img_iip)
+        img_iip = np.einsum('ij,klj->kli', iipA, img_iip)
+        # for row_index, row in enumerate(src_xyz):
+        #     for columm_index, element in enumerate(row):
+        #         element = np.dot(iipB, element)
+        #         element = safe_ln(element)  # element = np.log(element)
+        #         element = np.dot(iipA, element)
+        #         # element = (element - iip_min)/(iip_max - iip_min)  # Normalized to 0.0 ; 1.0
+        #         # element = np.around(element, decimals=6)  # Remove some "extreme" precision
+        #         img_iip[row_index][columm_index] = element
         img_iip = Image(img_iip, CS_IIP, self.imgname)
         return img_iip
 

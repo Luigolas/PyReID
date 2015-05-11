@@ -163,7 +163,7 @@ class Image(np.ndarray):
         # src_xyz = cv2.cvtColor(imgf32, cv2.COLOR_BGR2XYZ)
         src_xyz = cv2.cvtColor(src, cv2.COLOR_BGR2XYZ)
 
-        img_iip = np.empty_like(src_xyz, np.float32)
+        # img_iip = np.empty_like(src_xyz, np.float32)
 
         img_iip = np.einsum('ij,klj->kli', iipB, src_xyz)
         img_iip = safe_ln(img_iip)

@@ -35,7 +35,7 @@ class ImageSet(object):
                 if ImageSet._valid_format(filename):
                     f = os.path.join(path, filename)
                     files.append(f)
-        return files
+        return sorted(files)
 
     def load_images(self):
         self.images_train = []

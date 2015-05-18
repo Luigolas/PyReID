@@ -517,10 +517,14 @@ class GaussianMap(Preprocessing):
     def __init__(self, alpha=0.5, kernel="GMM", sigmas=None, deviations=None):
         if sigmas is None:
             self.sigmas = np.asarray([7.4, 8.7])
+        else:
+            self.sigmas = sigmas
         self.sigmas = np.asarray(self.sigmas)
 
         if deviations is None:
             self.deviations = np.asarray([1., 2.])
+        else:
+            self.deviations = deviations
         self.deviations = np.asarray(self.deviations)
 
         self.sigmas_str = str(self.sigmas)
@@ -606,7 +610,7 @@ class GaussianMap(Preprocessing):
 
     def dict_name(self):
         # name = {"Map": self.kernel_name, "MapSigmas": self.sigmas_str}
-        name = {"name": self.kernel_name, "params": [self.sigmas_str]}
+        name = {"name": self.kernel_name, "params": [self.alpha, self.sigmas_str]}
         if self.kernel_name == "GMM":
             # name.update({"MapDeviations": self.deviations_str})
             name["params"].append(self.deviations_str)

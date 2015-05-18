@@ -10,7 +10,7 @@ CS_BGR = 2
 CS_HSV = 3
 CS_YCrCb = 4
 
-colorspace_name = ["", "IIP", "BGR", "HSV"]
+colorspace_name = ["", "IIP", "BGR", "HSV", "YCrCb"]
 
 iipA = np.asarray([[27.07439, -0.2280783, -1.806681],
                    [-5.646736, -7.722125, 12.86503],
@@ -140,19 +140,10 @@ class Image(np.ndarray):
         #     DB[img.dbname()] = img
         return img
 
-    def dbname(self, colorspace=None):
-        if not self.imgname:
-            raise AttributeError("Image has no imgname")
-        if not colorspace:
-            colorspace = self.colorspace
-        foldername = self.imgname.split("/")[-2]
-        imgname = self.imgname.split("/")[-1]
-        imgname = imgname.split(".")[0]
-        keys = ["images", str(colorspace), foldername, imgname]
-        return keys
+    def dbname(self):
+        return abs(hash(self.tostring()))
 
     def _bgr2iip(self):
-
         # Convert to CV_32F3 , floating point in range 0.0 , 1.0
         # imgf32 = np.float32(self)
         # imgf32 = imgf32*1.0/255
@@ -169,6 +160,7 @@ class Image(np.ndarray):
         img_iip = np.einsum('ij,klj->kli', iipB, src_xyz)
         img_iip = safe_ln(img_iip)
         img_iip = np.einsum('ij,klj->kli', iipA, img_iip)
+        img_iip = img_iip.astype(np.float32)
         # for row_index, row in enumerate(src_xyz):
         #     for columm_index, element in enumerate(row):
         #         element = np.dot(iipB, element)
@@ -177,8 +169,7 @@ class Image(np.ndarray):
         #         # element = (element - iip_min)/(iip_max - iip_min)  # Normalized to 0.0 ; 1.0
         #         # element = np.around(element, decimals=6)  # Remove some "extreme" precision
         #         img_iip[row_index][columm_index] = element
-        img_iip = Image(img_iip.astype(np.float32), CS_IIP, self.imgname)
-        return img_iip
+        return Image(img_iip, CS_IIP, self.imgname)
 
     def _bgr2hsv(self, normed=False):
         if normed:

@@ -38,7 +38,7 @@ class BTF(Preprocessing):
         self.btf = None
 
     def dict_name(self):
-        return {"BTF": self._method}
+        return {"name": self._method}
 
     def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         if verbosity > 1: print("   BTF (%s)..." % self._method)

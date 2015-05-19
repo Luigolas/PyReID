@@ -11,7 +11,6 @@ import numpy as np
 from package.dataset import Dataset
 
 
-
 class Execution():
     def __init__(self, dataset=None, preproc=None, feature_extractor=None, feature_matcher=None,
                  post_ranker=None, train_split=None):
@@ -29,7 +28,6 @@ class Execution():
         self.feature_matcher = feature_matcher
         self.matching_matrix = None
         # self.ranking_matrix = None
-        self.post_ranker = post_ranker
 
     def set_probe(self, folder):
         self.dataset.set_probe(folder)
@@ -88,10 +86,12 @@ class Execution():
         name.update(self.feature_matcher.dict_name())
         return name
 
-    def run(self, verbosity=2):
+    def run(self, verbosity=2, fe4train_set=False):
         """
 
 
+
+        :param fe4train_set:
         :param verbosity:
         :return:
         """
@@ -109,7 +109,7 @@ class Execution():
         self._preprocess(n_jobs, verbosity)
 
         if verbosity > 0: print("Extracting Features")
-        self._extract_dataset(n_jobs, verbosity)
+        self._extract_dataset(n_jobs, verbosity, fe4train_set)
 
         # Calculate Comparison matrix
         if verbosity > 0: print("Matching Features")
@@ -161,8 +161,8 @@ class Execution():
             for preproc in self.preprocessing:
                 preproc.preprocess_dataset(self.dataset, n_jobs, verbosity)
 
-    def _extract_dataset(self, n_jobs=-1, verbosity=2):
-        self.feature_extractor.extract_dataset(self.dataset, n_jobs, verbosity)
+    def _extract_dataset(self, n_jobs=-1, verbosity=2, extract_train=False):
+        self.feature_extractor.extract_dataset(self.dataset, n_jobs, verbosity, extract_train)
 
     def _calc_matching_matrix(self, n_jobs=-1, verbosity=2):
         self.matching_matrix = self.feature_matcher.match_probe_gallery(self.dataset.probe.fe_test,

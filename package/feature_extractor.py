@@ -13,13 +13,16 @@ def _parallel_transform(fe, *args):
 
 
 class FeatureExtractor(object):
-    def extract_dataset(self, dataset, n_jobs, verbosity=2):
+    def extract_dataset(self, dataset, n_jobs, verbosity=2, calc4train_set=False):
         """
+
+
 
 
         :param dataset:
         :param n_jobs:
         :param verbosity:
+        :param calc4train_set:
         :return:
         """
         raise NotImplementedError("Please Implement extract_dataset method")
@@ -75,45 +78,60 @@ class Histogram(FeatureExtractor):
 
         self.name = "Histogram_%s_%s_%s" % (colorspace_name[self._colorspace], self._bins, self._dimension)
 
-    def extract_dataset(self, dataset, n_jobs=-1, verbosity=2):
+    def extract_dataset(self, dataset, n_jobs=-1, verbosity=2, calc4train_set=False):
         if verbosity > 1: print("   Calculating Histograms %s, %s" % (colorspace_name[self._colorspace],
                                                                       str(self._original_bins)))
-        images = dataset.probe.images_train + dataset.probe.images_test
-        images += dataset.gallery.images_train + dataset.gallery.images_test
-        images = dataset.probe.images_test
-        images += dataset.gallery.images_test
+        if calc4train_set:
+            images = dataset.probe.images_train + dataset.probe.images_test
+            images += dataset.gallery.images_train + dataset.gallery.images_test
+        else:
+            images = dataset.probe.images_test
+            images += dataset.gallery.images_test
 
         if dataset.probe.masks_test:
-            masks = dataset.probe.masks_test
-            masks += dataset.gallery.masks_test
+            if calc4train_set:
+                masks = dataset.probe.masks_train + dataset.probe.masks_test
+                masks += dataset.gallery.masks_train + dataset.gallery.masks_test
+            else:
+                masks = dataset.probe.masks_test
+                masks += dataset.gallery.masks_test
         else:
-            masks = [None] * (dataset.test_size) * 2
+            masks = [None] * (len(images))
 
         if dataset.probe.regions_test:
-            regions = dataset.probe.regions_test
-            regions += dataset.gallery.regions_test
+            if calc4train_set:
+                regions = dataset.probe.regions_train + dataset.probe.regions_test
+                regions += dataset.gallery.regions_train + dataset.gallery.regions_test
+            else:
+                regions = dataset.probe.regions_test
+                regions += dataset.gallery.regions_test
         else:
-            regions = [None] * (dataset.test_size ) * 2
+            regions = [None] * (len(images))
 
         if dataset.probe.maps_test:
-            maps = dataset.probe.maps_test
-            maps += dataset.gallery.maps_test
+            if calc4train_set:
+                maps = dataset.probe.maps_train + dataset.probe.maps_test
+                maps += dataset.gallery.maps_train + dataset.galley.maps_test
+            else:
+                maps = dataset.probe.maps_test
+                maps += dataset.gallery.maps_test
         else:
-            maps = [None] * (dataset.test_size) * 2
-
+            maps = [None] * (len(images))
 
         args = ((im, mask, region, m) for im, mask, region, m in zip(images, masks, regions, maps))
 
         results = Parallel(n_jobs)(delayed(_parallel_transform)(self, im, mask, reg, m) for im, mask, reg, m in args)
 
-        # train_len = dataset.train_size
         test_len = dataset.test_size
-        dataset.probe.fe_test = np.asarray(results[:test_len])
-        dataset.gallery.fe_test = np.asarray(results[-test_len:])
-        # dataset.probe.fe_train = np.asarray(results[:train_len])
-        # dataset.probe.fe_test = np.asarray(results[train_len:train_len + test_len])
-        # dataset.gallery.fe_train = np.asarray(results[train_len + test_len:-test_len])
-        # dataset.gallery.fe_test = np.asarray(results[-test_len:])
+        if calc4train_set:
+            train_len = dataset.train_size
+            dataset.probe.fe_train = np.asarray(results[:train_len])
+            dataset.probe.fe_test = np.asarray(results[train_len:train_len + test_len])
+            dataset.gallery.fe_train = np.asarray(results[train_len + test_len:-test_len])
+            dataset.gallery.fe_test = np.asarray(results[-test_len:])
+        else:
+            dataset.probe.fe_test = np.asarray(results[:test_len])
+            dataset.gallery.fe_test = np.asarray(results[-test_len:])
 
     def extract(self, image, mask=None, regions=None, weights=None, normalization=cv2.NORM_MINMAX):
         """

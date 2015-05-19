@@ -6,7 +6,7 @@ __author__ = 'luigolas'
 
 from sklearn.ensemble import RandomForestRegressor, RandomTreesEmbedding
 import numpy as np
-import package.execution as execution
+# import package.execution as execution
 
 
 class PostRankOptimization(object):
@@ -29,6 +29,7 @@ class PostRankOptimization(object):
         self.leaf_indexes = None
         # self.affinity_graph = None
         self.execution = None
+        self.ranking_matrix = None
         self.rank_list = None
         self.comp_list = None
         self.balanced = balanced
@@ -39,8 +40,9 @@ class PostRankOptimization(object):
         self.re_score_alpha = re_score_alpha
         self.re_score_method_proportional = re_score_method_proportional
 
-    def set_ex(self, ex):
+    def set_ex(self, ex, rm):
         self.execution = ex
+        self.ranking_matrix = rm
         self.initial_iteration()
 
     def new_samples(self, weak_negatives_index, strong_negatives_index):
@@ -80,9 +82,9 @@ class PostRankOptimization(object):
             self.subject += 1
             self.probe_name = self.execution.dataset.probe.files_test[self.subject]
             self.probe_name = "/".join(self.probe_name.split("/")[-2:])
-            self.probe_selected = execution.probeXtest[self.subject]
-            self.rank_list = self.execution.ranking_matrix[self.subject].copy()
-            self.comp_list = self.execution.comparison_matrix[self.subject].copy()
+            self.probe_selected = self.execution.dataset.probe.fe_test[self.subject]
+            self.rank_list = self.ranking_matrix[self.subject].copy()
+            self.comp_list = self.execution.matching_matrix[self.subject].copy()
             self._calc_target_position()
             self.iteration = 0
             self.strong_negatives = []
@@ -94,9 +96,9 @@ class PostRankOptimization(object):
     def initial_iteration(self):
         self.new_subject()
         if self.use_visual_expansion:
-            self.visual_expansion.fit(execution.probeXtrain, execution.galleryYtrain)
-        self.cluster_forest.fit(execution.galleryYtest)
-        self.affinity_matrix = self.calc_affinity_matrix(execution.galleryYtest)
+            self.visual_expansion.fit(self.execution.dataset.probe.fe_train, self.execution.dataset.gallery.fe_train)
+        self.cluster_forest.fit(self.execution.dataset.gallery.fe_test)
+        self.affinity_matrix = self.calc_affinity_matrix(self.execution.dataset.gallery.fe_test)
         # TODO Affinity graph ??
 
     def iterate(self):
@@ -208,7 +210,7 @@ class SAA(PostRankOptimization):
         :param elem2_fe:
         :return:
         """
-        similarity = self.execution.comparator.match(elem2_fe, execution.galleryYtest[elem])
+        similarity = self.execution.feature_matcher.match(elem2_fe, self.execution.dataset.gallery.fe_test[elem])
         increment = sign * self.re_score_alpha
         if self.re_score_method_proportional:
             self.comp_list[elem] = comp_with_probe + (increment * comp_with_probe *
@@ -224,13 +226,13 @@ class SAA(PostRankOptimization):
             for elem, (comp_with_probe, affinity) in enumerate(zip(self.comp_list, self.affinity_matrix[sn])):
                 n_estimators = self.cluster_forest.get_params()['n_estimators']
                 affinity = float(affinity) / n_estimators
-                self.re_score(+1, elem, comp_with_probe, affinity, execution.galleryYtest[sn])
+                self.re_score(+1, elem, comp_with_probe, affinity, self.execution.dataset.gallery.fe_test[sn])
 
         for wn in self.new_weak_negatives:
             for elem, (comp_with_probe, affinity) in enumerate(zip(self.comp_list, self.affinity_matrix[wn])):
                 n_estimators = self.cluster_forest.get_params()['n_estimators']
                 affinity = float(affinity) / n_estimators
-                self.re_score(-1, elem, comp_with_probe, affinity, execution.galleryYtest[wn])
+                self.re_score(-1, elem, comp_with_probe, affinity, self.execution.dataset.gallery.fe_test[wn])
 
         for ve in self.new_visual_expanded:
             ve_cluster_value = self.cluster_forest.apply(ve)

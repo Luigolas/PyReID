@@ -4,14 +4,12 @@ import sys
 import ast
 from PyQt4 import QtGui
 import os
-import package.segmenter as segmenter
-import package.preprocessing as preprocessing
 from package import feature_extractor
 from package.image import CS_HSV, CS_BGR, CS_IIP
 import package.execution as execution
 from package.dataset import Dataset
 from package.post_ranker import SAA
-import package.feature_matcher as comparator
+import package.feature_matcher as FM
 from gui.gui import MainWindow, ImagesSelectionForm
 
 
@@ -33,29 +31,11 @@ def run():
     sys.exit(app.exec_())
 
 
-def run_image_selection():
+def run_image_selection(preproc):
     global appMainForm, appImagesForm, POP
 
-    # Todo set mask for segmenter at GUI
     probe = str(appMainForm.ProbeLineEdit.text())
     gallery = str(appMainForm.GalleryLineEdit.text())
-
-    mask_source = os.path.join(path, "../resources/masks/ViperOptimalMask.txt")
-    grabcut = segmenter.Grabcut(mask_source)
-
-    if appMainForm.radioButton6R.isChecked():
-        regions = [[[0, 27], [28, 54], [55, 81], [82, 108], [109, 135], [136, 160]], "6R"]
-        weights = [0, 0.3, 0.3, 0.15, 0.15, 0.1]
-    else:
-        regions = [None, None]
-        weights = None
-
-    if appMainForm.radioButtonPreprocNone.isChecked():
-        preproc = None
-    elif appMainForm.radioButtonPreprocCBTF.isChecked():
-        preproc = preprocessing.BTF("CBTF")
-    else:  # if self.radioButtonPreprocMBTF.ischecked():
-        preproc = preprocessing.BTF("ngMBTF")
 
     if appMainForm.comboBoxFeatureExtraction.currentText() == "Histograms":
         if appMainForm.comboBoxColorSpace.currentText() == "HSV":
@@ -69,13 +49,19 @@ def run_image_selection():
             dim = "1D"
         else:
             dim = "3D"
-        fe = feature_extractor.Histogram(colorspace, ast.literal_eval(str(appMainForm.lineEditBins.text())), regions[0],
-                                         dim, regions[1])
+        fe = feature_extractor.Histogram(colorspace, ast.literal_eval(str(appMainForm.lineEditBins.text())), dim)
     else:
         fe = None
 
-    comp = comparator.HistogramsCompare(comparator.method_names.index(appMainForm.comboBoxComparator.currentText()),
-        weights)
+    if appMainForm.WeightsNoneRadioButton.isChecked():
+        weights = None
+    elif appMainForm.Weights5RRadioButton.isChecked():
+        weights = [0.3, 0.3, 0.15, 0.15, 0.1]
+    else:  # if WeightsUserRadioButton.isChecked():
+        weights = ast.literal_eval(str(appMainForm.WeightsUserLineEdit.text()))
+
+    Fmatcher = FM.HistogramsCompare(FM.method_names.index(appMainForm.comboBoxComparator.currentText()),
+                                        weights)
 
     train_split = float(appMainForm.lineEditTrainSplit.text())
     if train_split > 1:
@@ -85,13 +71,14 @@ def run_image_selection():
     if test_split > 1.:
         test_split = int(test_split)
 
-    ex = execution.Execution(Dataset(probe, gallery, train_split, test_split), grabcut, preproc, fe, comp)
+    ex = execution.Execution(Dataset(probe, gallery, train_split, test_split), preproc, fe, Fmatcher)
 
-    ex.run()
+    ranking_matrix = ex.run(fe4train_set=True)
 
     if appMainForm.radioButtonPOPBalancedAndVE.isChecked():
         balanced = True
         visual_expansion_use = True
+
     elif appMainForm.radioButtonPOPBalanced.isChecked():
         balanced = True
         visual_expansion_use = False
@@ -102,7 +89,7 @@ def run_image_selection():
     re_score_method_proportional = appMainForm.radioButtonReScoreProportional.isChecked()
     POP = SAA(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
               re_score_method_proportional=re_score_method_proportional)
-    POP.set_ex(ex)
+    POP.set_ex(ex, ranking_matrix)
     appImagesForm.update(POP)
     appMainForm.hide()
     appImagesForm.show()

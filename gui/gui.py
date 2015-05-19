@@ -5,6 +5,7 @@ __author__ = 'luigolas'
 from PyQt4 import QtCore, QtGui, uic
 import os
 import package.feature_matcher as comparator
+import package.preprocessing as preprocessing
 
 
 # get the directory of this script
@@ -22,16 +23,47 @@ class MainWindow(MainWindowBase, MainWindowUI):
         MainWindowBase.__init__(self, parent)
         self.setupUi(self)
         self.defaultSetup()
+
+        # Main buttons
         self.ProbeFolderPicker.clicked.connect(self.probe_picker)
         self.GalleryFolderPicker.clicked.connect(self.gallery_picker)
+        self.buttonGroupFeMatcherWeights.buttonClicked.connect(self.toggle_weight_user)
+
+        # Preprocess buttons
+        self.IluNormAddButton.clicked.connect(self.add_ilunorm)
+        self.BTFAddbutton.clicked.connect(self.add_btf)
+        self.GrabcutMaskFilePicker.clicked.connect(self.grabcut_mask_file_picker)
+        self.GrabcutAddButton.clicked.connect(self.add_grabcut)
+        self.MaskFromMatFilePicker.clicked.connect(self.mask_from_mat_file_picker)
+        self.MaskFromMatAddButton.clicked.connect(self.add_mask_from_mat)
+        self.VerticalregionsAddButton.clicked.connect(self.add_vertical_regions)
+        self.SilRegPartAddButton.clicked.connect(self.add_silpart_regions)
+        self.GaussianAddButton.clicked.connect(self.add_gaussian)
+
+        self.RemoveSelbutton.clicked.connect(self.removeSel)
+
+        # Run Button
         self.RunButton.clicked.connect(self.run)
-        # self.custom_setup()
+
+        self.preproc = []
 
     def defaultSetup(self):
         self.ProbeLineEdit.setText(os.path.join(path, '../datasets/viper/cam_a/'))
         self.GalleryLineEdit.setText(os.path.join(path, '../datasets/viper/cam_b/'))
         self.comboBoxComparator.addItems(comparator.method_names)
         self.comboBoxComparator.setCurrentIndex(3)
+
+        # http://stackoverflow.com/a/13661117
+        list_model = self.listPreprocess.model()
+        list_model.rowsMoved.connect(self.list_preprocess_reorder)
+
+    def list_preprocess_reorder(self, *args):
+        print "Layout Changed"
+        source = args[1]
+        destination = args[-1]
+        # http://stackoverflow.com/a/3173159
+        self.preproc.insert(destination, self.preproc.pop(source))
+        pass
 
     def probe_picker(self):
         dir_ = QtGui.QFileDialog.getExistingDirectory(None, 'Select a folder:', os.path.join(path, "../datasets/"),
@@ -43,9 +75,86 @@ class MainWindow(MainWindowBase, MainWindowUI):
                                                       QtGui.QFileDialog.ShowDirsOnly)
         self.GalleryLineEdit.setText(dir_)
 
+    def toggle_weight_user(self, RadioButton):
+        if RadioButton is self.WeightsUserRadioButton:
+            self.WeightsUserLineEdit.setEnabled(True)
+        else:
+            self.WeightsUserLineEdit.setEnabled(False)
+
+    def add_ilunorm(self):
+        from package.image import colorspace_name as cs_name
+        colorspace = cs_name.index(self.IluNormComboBox.currentText())
+        ilunorm = preprocessing.Illumination_Normalization(colorspace)
+        self.add_preproc(ilunorm)
+
+    def add_btf(self):
+        btf = preprocessing.BTF(str(self.comboBoxBTF.currentText()))
+        self.add_preproc(btf)
+
+    def grabcut_mask_file_picker(self):
+        file_ = QtGui.QFileDialog.getOpenFileName(None, 'Select a .txt file:',
+                                                  os.path.join(path, "../resources/masks/"))
+        self.GrabcutMaskLineEdit.setText(file_)
+
+    def add_grabcut(self):
+        try:
+            grabcut = preprocessing.Grabcut(str(self.GrabcutMaskLineEdit.text()), self.GrabcutItersSpinBox.value())
+            self.add_preproc(grabcut)
+        except (ValueError, IOError) as e:
+            QtGui.QMessageBox.about(self, "Error", "File name is not valid")
+
+    def mask_from_mat_file_picker(self):
+        file_ = QtGui.QFileDialog.getOpenFileName(None, 'Select a .mat file:',
+                                                  os.path.join(path, "../resources/masks/"))
+        self.MaskFromMatLineEdit.setText(file_)
+
+    def add_mask_from_mat(self):
+        try:
+            maskfrommat = preprocessing.MasksFromMat(str(self.MaskFromMatLineEdit.text()))
+            self.add_preproc(maskfrommat)
+        except (ValueError, IOError) as e:
+            QtGui.QMessageBox.about(self, "Error", "File name is not valid")
+
+    def add_vertical_regions(self):
+        vert = preprocessing.VerticalRegionsPartition()
+        self.add_preproc(vert)
+
+    def add_silpart_regions(self):
+        alpha = self.SilRegPartAlphaSpinBox.value()
+        sub_divisions = self.SilRegPartDivisionSpinBox.value()
+        silpart = preprocessing.SilhouetteRegionsPartition(alpha, sub_divisions)
+        self.add_preproc(silpart)
+
+    def add_gaussian(self):
+        alpha = self.GaussianAlphaSpinBox.value()
+        kernel = str(self.GaussianKernelComboBox.currentText())
+        sigmas = [self.GaussianSigma1SpinBox.value(), self.GaussianSigma2SpinBox.value()]
+        deviations = [self.GaussianDeviation1SpinBox.value(), self.GaussianDeviation2SpinBox.value()]
+        gaussian = preprocessing.GaussianMap(alpha, kernel, sigmas, deviations)
+        self.add_preproc(gaussian)
+
+    def add_preproc(self, item):
+        self.preproc.append(item)
+        dict_name = item.dict_name()
+        name = dict_name['name']
+        if 'params' in dict_name.keys():
+            params = dict_name['params']
+        else:
+            params = ''
+        item = QtGui.QListWidgetItem(name + ' ' + params, )
+        self.listPreprocess.addItem(item)
+
+    def removeSel(self):
+        listItems = self.listPreprocess.selectedItems()
+        if not listItems: return
+        for item in listItems:
+            row = self.listPreprocess.row(item)
+            self.listPreprocess.takeItem(row)
+            self.preproc.pop(row)
+
     def run(self):
         from package.app import run_image_selection
-        run_image_selection()
+        run_image_selection(self.preproc)
 
 
 class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):

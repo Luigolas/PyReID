@@ -504,9 +504,9 @@ class VerticalRegionsPartition(Preprocessing):
         regions_test = [regions] * dataset.test_size
         regions_train = [regions] * dataset.train_size
         dataset.probe.regions_test = regions_test
-        dataset.probe.regions_trains = regions_train
+        dataset.probe.regions_train = regions_train
         dataset.gallery.regions_test = regions_test
-        dataset.gallery.regions_trains = regions_train
+        dataset.gallery.regions_train = regions_train
 
     def dict_name(self):
         # return {"Regions": self.regions_name, "RegCount": len(self.regions)}

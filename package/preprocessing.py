@@ -20,6 +20,9 @@ def _parallel_preprocess(preproc, im, *args):
 
 
 class Preprocessing(object):
+    def __init__(self, skip=False):
+        self.skip = skip
+
     def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         raise NotImplementedError("Please Implement preprocess_dataset method")
 
@@ -31,7 +34,8 @@ class Preprocessing(object):
 
 
 class BTF(Preprocessing):
-    def __init__(self, method="CBTF"):
+    def __init__(self, method="CBTF", skip=False):
+        super(BTF, self).__init__(skip)
         if not (method == "CBTF" or method == "ngMBTF"):  # or method == "gMBTF"
             raise InitializationError("Method " + method + " is not a valid preprocessing method")
         self._method = method
@@ -41,6 +45,9 @@ class BTF(Preprocessing):
         return {"name": self._method}
 
     def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
+        if self.skip:
+            return
+
         if verbosity > 1: print("   BTF (%s)..." % self._method)
         self.btf = None
         if not dataset.train_size:
@@ -170,7 +177,8 @@ class BTF(Preprocessing):
 
 
 class Illumination_Normalization(Preprocessing):
-    def __init__(self, color_space=CS_YCrCb):
+    def __init__(self, color_space=CS_YCrCb, skip=False):
+        super(Illumination_Normalization, self).__init__(skip)
         self.color_space = color_space
         if color_space == CS_HSV:
             self.channel = 2
@@ -178,6 +186,9 @@ class Illumination_Normalization(Preprocessing):
             self.channel = 0
 
     def preprocess_dataset(self, dataset, n_jobs=1, verbosity=2):
+        if self.skip:
+            return
+
         if verbosity > 1: print("   Illumination Normalization...")
         assert (type(dataset) == Dataset)
 
@@ -213,7 +224,8 @@ class Illumination_Normalization(Preprocessing):
 class Grabcut(Preprocessing):
     compatible_color_spaces = [CS_BGR]
 
-    def __init__(self, mask_source, iter_count=2, color_space=CS_BGR):
+    def __init__(self, mask_source, iter_count=2, color_space=CS_BGR, skip=False):
+        super(Grabcut, self).__init__(skip)
         self._mask_name = mask_source.split("/")[-1].split(".")[0]
         self._mask = np.loadtxt(mask_source, np.uint8)
         self._iter_count = iter_count
@@ -221,16 +233,19 @@ class Grabcut(Preprocessing):
             raise AttributeError("Grabcut can't work with colorspace " + str(color_space))
         self._colorspace = color_space
         self.name = type(self).__name__ + str(self._iter_count) + self._mask_name
-        # self.dict_name = {"Segmenter": str(type(self).__name__), "SegIter": self._iter_count,
-        # "Mask": self._mask_name}
 
     def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         """
 
+
         :param dataset:
         :param n_jobs:
+        :param verbosity:
         :return:
         """
+        if self.skip:
+            return
+
         if verbosity > 1: print("   Generating Masks (Grabcut)...")
         imgs = dataset.probe.images_train + dataset.probe.images_test
         imgs += dataset.gallery.images_train + dataset.gallery.images_test
@@ -303,7 +318,8 @@ class MasksFromMat(Preprocessing):
     :return:
     """
 
-    def __init__(self, mat_path, var_name='msk', invert=False):
+    def __init__(self, mat_path, var_name='msk', invert=False, skip=False):
+        super(MasksFromMat, self).__init__(skip)
         # self.pair_order = pair_order
         self.path = mat_path
         self.var_name = var_name
@@ -327,7 +343,6 @@ class MasksFromMat(Preprocessing):
             dict_name = None
         return dict_name
 
-
     def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
         """
 
@@ -335,6 +350,9 @@ class MasksFromMat(Preprocessing):
         :param n_jobs:
         :return:
         """
+        if self.skip:
+            return
+
         if verbosity > 1: print("   Loading masks from .mat file")
         data = loadmat(self.path)
         masks = data[self.var_name][0]
@@ -365,7 +383,8 @@ class MasksFromMat(Preprocessing):
 
 
 class SilhouetteRegionsPartition(Preprocessing):
-    def __init__(self, alpha=0.5, sub_divisions=1):
+    def __init__(self, alpha=0.5, sub_divisions=1, skip=False):
+        super(SilhouetteRegionsPartition, self).__init__(skip)
         self.I = 0
         self.J = 0
         self.deltaI = 0
@@ -381,6 +400,9 @@ class SilhouetteRegionsPartition(Preprocessing):
         :param n_jobs:
         :return:
         """
+        if self.skip:
+            return
+
         if verbosity > 1: print("   Calculating Silhouette Regions...")
         (self.I, self.J, _) = dataset.probe.images_test[0].shape  # Assumes all images of same shape
         self.deltaI = self.I / 4
@@ -483,7 +505,8 @@ class SilhouetteRegionsPartition(Preprocessing):
 
 
 class VerticalRegionsPartition(Preprocessing):
-    def __init__(self, regions=None, regions_name=None):
+    def __init__(self, regions=None, regions_name=None, skip=False):
+        super(VerticalRegionsPartition, self).__init__(skip)
         if regions is None:
             self.regions = [[16, 33], [33, 50], [50, 67], [67, 84], [84, 100]]
         else:
@@ -494,6 +517,9 @@ class VerticalRegionsPartition(Preprocessing):
             self.regions_name = regions_name
 
     def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
+        if self.skip:
+            return
+
         if verbosity > 1: print("   Generating Vertical regions...")
         # [[0, 16], [16, 33], [33, 50], [50, 67], [67, 84], [84, 100]] #  Over 100% size, not actual image size
         (I, J, _) = dataset.probe.images_test[0].shape
@@ -514,22 +540,20 @@ class VerticalRegionsPartition(Preprocessing):
 
 
 class GaussianMap(Preprocessing):
-    def __init__(self, alpha=0.5, kernel="GMM", sigmas=None, deviations=None):
+    def __init__(self, alpha=0.5, kernel="GMM", sigmas=None, deviations=None, skip=False):
+        super(GaussianMap, self).__init__(skip)
         if sigmas is None:
             self.sigmas = np.asarray([7.4, 8.7])
         else:
             self.sigmas = sigmas
         self.sigmas = np.asarray(self.sigmas)
-
         if deviations is None:
             self.deviations = np.asarray([1., 2.])
         else:
             self.deviations = deviations
         self.deviations = np.asarray(self.deviations)
-
         self.sigmas_str = str(self.sigmas)
         self.deviations_str = str(self.deviations)
-
         self.J = 0
         self.deltaJ = 0
         self.search_range_V = []
@@ -543,6 +567,9 @@ class GaussianMap(Preprocessing):
             raise ValueError("Invalid kernel %s" % kernel)
 
     def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
+        if self.skip:
+            return
+
         if verbosity > 1: print("   Calculating %s Maps..." % self.kernel_name)
         (_, self.J, _) = dataset.probe.images_test[0].shape  # Assumes all images of same shame
         self.deltaJ = self.J / 3

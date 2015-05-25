@@ -78,9 +78,10 @@ class Execution():
                 # name.update(preproc.dict_name())
                 # name.update({"Preproc%d" % val: preproc.dict_name()})
                 preproc_name = preproc.dict_name()
-                name.update({"Preproc%d" % val: preproc_name["name"]})
-                if "params" in preproc_name:
-                    name.update({"Preproc%dParams" % val: preproc_name["params"]})
+                if preproc_name:
+                    name.update({"Preproc%d" % val: preproc_name["name"]})
+                    if "params" in preproc_name:
+                        name.update({"Preproc%dParams" % val: preproc_name["params"]})
         name.update(self.dataset.dict_name())
         name.update(self.feature_extractor.dict_name())
         name.update(self.feature_matcher.dict_name())

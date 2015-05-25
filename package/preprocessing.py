@@ -664,3 +664,35 @@ def _gau_kernel(x, sigma, H, W, *args):
     g /= g.max()
     g = np.tile(g, [H, 1])
     return g
+
+
+class LoadFromFile(Preprocessing):
+    def __init__(self, f, field):
+        """
+        Allows to load a precalculated result for Regions or Maps. Specially usefull for batch executions, saving
+        CPU time. Doesn't appear on dict name
+        :param f: File .npy to load from
+        :param field: specify if it is Regions or Maps
+        :return:
+        """
+        super(LoadFromFile, self).__init__()
+        self.file = f
+        self.field = field.lower()
+
+    def preprocess_dataset(self, dataset, n_jobs=-1, verbosity=2):
+        data = list(np.load(self.file))
+        train_len = dataset.train_size
+        test_len = dataset.test_size
+        if self.field == "regions":
+            dataset.probe.regions_train = data[:train_len]
+            dataset.probe.regions_test = data[train_len:train_len + test_len]
+            dataset.gallery.regions_train = data[train_len + test_len:-test_len]
+            dataset.gallery.regions_test = data[-test_len:]
+        elif self.field == "maps":
+            dataset.probe.maps_train = data[:train_len]
+            dataset.probe.maps_test = data[train_len:train_len + test_len]
+            dataset.gallery.maps_train = data[train_len + test_len:-test_len]
+            dataset.gallery.maps_test = data[-test_len:]
+
+    def dict_name(self):
+        return {}

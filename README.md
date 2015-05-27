@@ -47,34 +47,35 @@ How to Use
 
 Next code shows how to prepare a simple execution:
 
+```python
+from package.dataset import Dataset
+import package.preprocessing as preprocessing
+from package.image import CS_HSV, CS_YCrCb
+import package.feature_extractor as feature_extractor
+import package.feature_matcher as feature_matcher
+from package.execution import Execution
+from package.statistics import Statistics
 
-    from package.dataset import Dataset
-    import package.preprocessing as preprocessing
-    from package.image import CS_HSV, CS_YCrCb
-    import package.feature_extractor as feature_extractor
-    import package.feature_matcher as feature_matcher
-    from package.execution import Execution
-    from package.statistics import Statistics
+# Preprocessing
+IluNormY = preprocessing.Illumination_Normalization(color_space=CS_YCrCb)
+mask_source = "../resources/masks/ViperOptimalMask-4.txt"
+grabcut = preprocessing.Grabcut(mask_source)  # Segmenter
+preproc = [IluNormY, grabcut]  # Executes on this order
 
-    # Preprocessing
-    IluNormY = preprocessing.Illumination_Normalization(color_space=CS_YCrCb)
-    mask_source = "../resources/masks/ViperOptimalMask-4.txt"
-    grabcut = preprocessing.Grabcut(mask_source)  # Segmenter
-    preproc = [IluNormY, grabcut]  # Executes on this order
+fe = feature_extractor.Histogram(CS_HSV, [16, 16, 4], "1D")
+f_match = feature_matcher.HistogramsCompare(feature_matcher.HISTCMP_BHATTACHARYYA)
 
-    fe = feature_extractor.Histogram(CS_HSV, [16, 16, 4], "1D")
-    f_match = feature_matcher.HistogramsCompare(feature_matcher.HISTCMP_BHATTACHARYYA)
+probe = "../datasets/viper/cam_a"
+gallery = "../datasets/viper/cam_b"
+ex = Execution(Dataset(probe, gallery), preproc, fe, f_match)
+ranking_matrix = ex.run()
 
-    probe = "../datasets/viper/cam_a"
-    gallery = "../datasets/viper/cam_b"
-    ex = Execution(Dataset(probe, gallery), preproc, fe, f_match)
-    ranking_matrix = ex.run()
+statistic = Statistics()
+statistic.run(ex.dataset, ranking_matrix)
 
-    statistic = Statistics()
-    statistic.run(ex.dataset, ranking_matrix)
-
-    print "Range 20: %f" % statistic.CMC[19]
-    print "AUC: %f" % statistic.AUC
+print "Range 20: %f" % statistic.CMC[19]
+print "AUC: %f" % statistic.AUC
+```
 
 To try the GUI for PostRanking just run *main.py*.
 

@@ -1,4 +1,4 @@
-PyReID: Re-identification Framework in Python
+PyReID: Python Person Re-identification Framework
 =====================================================
 Flexible and extensible Framework for [Person Re-identification problem](http://www.sciencedirect.com/science/article/pii/S0262885614000262).
 

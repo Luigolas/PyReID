@@ -145,7 +145,7 @@ class PostRankOptimization(object):
 
     def iterate(self):
         self.iteration += 1
-        print("Iteration %d" % self.iteration)
+        # print("Iteration %d" % self.iteration)
         to_expand_len = len(self.new_strong_negatives) - len(self.new_weak_negatives)
         if self.balanced:
             if to_expand_len < 0:

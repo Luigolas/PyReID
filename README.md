@@ -83,7 +83,7 @@ To try the GUI for PostRanking just run *main.py*.
 
 Author
 ------
-This project is initiated as a Final Project in the University of Las Palmas by [**Luis González Medina**](www.luigolas.com). 
+This project is initiated as a Final Project in the University of Las Palmas by [**Luis González Medina**](http://www.luigolas.com). 
 
 Tutors of this project are [**Modesto Castrillón Santana**](http://berlioz.dis.ulpgc.es/roc-siani/personas/modesto) and [**Javier Lorenzo Navarro**](http://berlioz.dis.ulpgc.es/roc-siani/personas/javier-lorenzo-navarro)
 

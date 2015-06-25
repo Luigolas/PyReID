@@ -87,17 +87,16 @@ class Execution():
         name.update(self.feature_matcher.dict_name())
         return name
 
-    def run(self, verbosity=2, fe4train_set=False):
+    def run(self, verbosity=2, fe4train_set=False, njobs=-1):
         """
 
-
-
-        :param fe4train_set:
         :param verbosity:
+        :param fe4train_set:
+        :param njobs:
         :return:
         """
         if sys.gettrace() is None:
-            n_jobs = -1
+            n_jobs = njobs
         else:
             n_jobs = 1
 

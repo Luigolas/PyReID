@@ -155,7 +155,11 @@ class PostRankOptimization(object):
 
             for i in range(to_expand_len):
                 # Randomly select if body or legs
-                self.new_visual_expanded.append([self._generate_visual_expansion(), random.choice([0, 1])])
+                if len(self.regions) == 1:
+                    reg = 0
+                else:  # Assumes only two body parts
+                    reg = random.choice([0, 1])
+                self.new_visual_expanded.append([self._generate_visual_expansion(), reg])
 
         self.reorder()
 
@@ -298,13 +302,15 @@ class SAA(PostRankOptimization):
             initial_pos = self.regions[idx][0] * self.size_for_each_region_in_fe
             ve_fe = ve[initial_pos:initial_pos + region_size]
             ve_cluster_value = self.cluster_forest[idx].apply(ve_fe)
+            X = self.execution.dataset.gallery.fe_test[:, initial_pos:initial_pos + region_size]
+            leaf_indexes = self.cluster_forest[idx].apply(X)
             for elem, elem_comp_w_probe in enumerate(self.comp_list):
                 elem_fe = self.execution.dataset.gallery.fe_test[elem][initial_pos:initial_pos + region_size]
-                elem_cluster_value = self.cluster_forest[idx].apply(elem_fe)
+                elem_cluster_value = leaf_indexes[elem]
                 n_estimators = self.cluster_forest[idx].get_params()['n_estimators']
                 affinity = np.sum(ve_cluster_value == elem_cluster_value)
                 affinity = float(affinity) / n_estimators
-                similarity = self.feature_matcher.match(elem_fe, ve_fe, )
+                similarity = self.feature_matcher.match(elem_fe, ve_fe)
                 self.re_score(-1, elem, elem_comp_w_probe, affinity, similarity)
 
         self.rank_list = np.argsort(self.comp_list).astype(np.uint16)

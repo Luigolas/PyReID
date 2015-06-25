@@ -158,20 +158,23 @@ class MainWindow(MainWindowBase, MainWindowUI):
 
 
 class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, item_size=(72, 192)):
         ImagesSelectionWindowBase.__init__(self, parent)
         self.setupUi(self)
         self.pushButtonNextIteration.clicked.connect(self.next_iteration)
         self.pushButtonMarkSolution.clicked.connect(self.mark_solution)
         self.pushButtonNextProbe.clicked.connect(self.next_probe)
         self.custom_setup()
+        self.regions = [[0]]  # Set via set regions
+        self.item_size = item_size
+        # self.regions_parts = 1
 
     def custom_setup(self):
         self.labelSolution.setText("")
 
-    def addImage(self, image_path, enabled=True):
+    def addImage(self, image_path, regions, enabled=True):
         # self.ui.ImagesContainer.addItem(QtGui.QListWidgetItem(QtGui.QIcon(image_path), "0"))
-        img = QtImage(image_path)
+        img = QtImage(image_path, regions, self.item_size)
 
         item = QtGui.QListWidgetItem("Selected")
         item.setSizeHint(img.sizeHint())
@@ -185,6 +188,16 @@ class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):
         self.labelProbe.setFixedSize(QtCore.QSize(*size))
         self.labelProbe.setScaledContents(True)
 
+    def set_regions(self, regions):
+        if regions is None:
+            self.regions = [[0]]
+            # self.regions_parts = 1
+        elif len(regions) == 2:
+            self.regions = regions
+            # self.regions_parts = sum([len(e) for e in regions])
+        else:
+            raise ValueError("Regions size must be 2 (body region and legs region)")
+
     def update(self, post_ranker):
         self.labelIterations.setText(str(post_ranker.iteration))
         self.labelTargetPosition.setText(str(post_ranker.target_position))
@@ -192,12 +205,21 @@ class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):
         self.labelProbeName.setText(post_ranker.probe_name)
         self.labelProbeNumber.setText("Probe %d of %d" % (post_ranker.subject, post_ranker.execution.dataset.test_size))
         self.ImagesContainer.clear()
+        image_size = post_ranker.execution.dataset.gallery.images_test[0].shape[:2] # Assumes all images have same shape
+        reshape_factor = self.item_size[1] / float(image_size[0])  # does not consider vertical size
         for elem in post_ranker.rank_list:
-            if elem in post_ranker.strong_negatives or elem in post_ranker.weak_negatives:
+            if elem in [sample[0] for sample in post_ranker.strong_negatives + post_ranker.weak_negatives]:
                 enabled = False
             else:
                 enabled = True
-            self.addImage(post_ranker.execution.dataset.gallery.files_test[elem], enabled)
+            if len(self.regions) == 1:
+                regions = [[0, image_size[0]]]
+            else:
+                img_regions = post_ranker.execution.dataset.gallery.regions_test[elem]
+                # For each regions take top horizontal line and bottom line (does not consider vertical limits)
+                regions = [[img_regions[r[0]][0], img_regions[r[-1]][1]] for r in self.regions]
+            regions = [[int(rs * reshape_factor) for rs in r] for r in regions]
+            self.addImage(post_ranker.execution.dataset.gallery.files_test[elem], regions, enabled)
         if post_ranker.iteration > 0:
             self.labelSolution.hide()
         self.labelErrorMessage.hide()
@@ -208,13 +230,12 @@ class ImagesSelectionForm(ImagesSelectionWindowBase, ImagesSelectionWindowUI):
         for index in range(self.ImagesContainer.count()):
             # http://www.qtcentre.org/threads/40439-QListWidget-accessing-item-info-%28listWidget-gt-setItemWidget%29
             elem = self.ImagesContainer.itemWidget(self.ImagesContainer.item(index))
-            # for rb in elem.selectedRubberBand:
-            if len(elem.selectedRubberBand) > 0:
-                rb = elem.selectedRubberBand[0]
+            for rb in elem.selectedRubberBand:
                 if rb.kind == "similar":
-                    weak_negatives.append(index)
+                    weak_negatives.append([index, rb.region])
                 else:
-                    strong_negatives.append(index)
+                    strong_negatives.append([index, rb.region])
+
         if len(strong_negatives) == 0 and len(weak_negatives) == 0:
             self.printError("You need to select at least one weak negative or strong negative")
             return
@@ -268,6 +289,7 @@ class NiceRubberBand(QtGui.QRubberBand):
             self.color = QtGui.QColor(255, 0, 0, alpha)
         else:
             self.color = QtGui.QColor(255, 255, 255, alpha)
+        self.region = 0
 
     def paintEvent(self, QPaintEvent):
         rect = QPaintEvent.rect()
@@ -279,29 +301,50 @@ class NiceRubberBand(QtGui.QRubberBand):
         # painter.setOpacity(0.3)
         painter.drawRect(rect)
 
+    def set_region(self, region):
+        """
+        Body(0) or legs(1) region
+        :param region:
+        :return:
+        """
+        self.region = region
 
 class QtImage(QtGui.QLabel):
-    def __init__(self, image, parent=None, size=(72, 192)):
+    def __init__(self, image_path, regions, size, parent=None):
         QtGui.QLabel.__init__(self, parent)
-        self.setImage(image)
+        self.setImage(image_path)
         self.setFixedSize(QtCore.QSize(*size))
         self.setScaledContents(True)
         self.overRubberBand = NiceRubberBand(QtGui.QRubberBand.Rectangle, self)
         self.setMouseTracking(True)
         self.selectedRubberBand = []
+        self.regions = regions
+        self.size = size
 
     def setImage(self, img):
         self.setPixmap(QtGui.QPixmap(img))
 
     def mouseMoveEvent(self, QMouseEvent):
-        if QtCore.QRect(0, 25, 72, 70).contains(QMouseEvent.pos()):
-            self.overRubberBand.setGeometry(QtCore.QRect(0, 25, 72, 70))
-            self.overRubberBand.show()
-        elif QtCore.QRect(0, 70, 72, 192).contains(QMouseEvent.pos()):
-            self.overRubberBand.setGeometry(QtCore.QRect(0, 95, 72, 97))
-            self.overRubberBand.show()
-        else:
+        over = False
+        for idx, r in enumerate(self.regions):
+            # QRect(int x, int y, int width, int height)
+            rect = QtCore.QRect(0, r[0], self.size[0], r[1] - r[0])
+            if rect.contains(QMouseEvent.pos()):
+                self.overRubberBand.setGeometry(rect)
+                self.overRubberBand.set_region(idx)  # body(0) or legs(1)
+                self.overRubberBand.show()
+                over = True
+        if not over:
             self.overRubberBand.hide()
+
+        # if QtCore.QRect(0, 25, 72, 70).contains(QMouseEvent.pos()):
+        #     self.overRubberBand.setGeometry(QtCore.QRect(0, 25, 72, 70))
+        #     self.overRubberBand.show()
+        # elif QtCore.QRect(0, 70, 72, 192).contains(QMouseEvent.pos()):
+        #     self.overRubberBand.setGeometry(QtCore.QRect(0, 95, 72, 97))
+        #     self.overRubberBand.show()
+        # else:
+        #     self.overRubberBand.hide()
 
     # def enterEvent(self, QEvent):
     # print "Mouse Entered"
@@ -330,5 +373,6 @@ class QtImage(QtGui.QLabel):
                 return
             rubberBand = NiceRubberBand(QtGui.QRubberBand.Rectangle, self, kind)
             rubberBand.setGeometry(self.overRubberBand.geometry())
+            rubberBand.set_region(self.overRubberBand.region)
             self.selectedRubberBand.append(rubberBand)
             rubberBand.show()

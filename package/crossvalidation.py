@@ -152,6 +152,7 @@ class CrossValidation():
         if not id:
             id = self.id()
 
+        # db = shelve.open(db_file, protocol=pickle.HIGHEST_PROTOCOL)
         db = shelve.open(db_file, protocol=pickle.HIGHEST_PROTOCOL)
         try:
             val = db.has_key(str(id))

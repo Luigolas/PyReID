@@ -8,7 +8,7 @@ from package import feature_extractor
 from package.image import CS_HSV, CS_BGR, CS_IIP
 import package.execution as execution
 from package.dataset import Dataset
-from package.post_ranker import SAA
+from package.post_ranker import SAA, LabSP
 import package.feature_matcher as FM
 from gui.gui import MainWindow, ImagesSelectionForm
 
@@ -71,14 +71,19 @@ def run_image_selection(preproc):
     if test_split > 1.:
         test_split = int(test_split)
 
-    ex = execution.Execution(Dataset(probe, gallery, train_split, test_split), preproc, fe, Fmatcher)
+    seed_split = str(appMainForm.lineEditSeed.text())
+    if seed_split == "None":
+        seed_split = None
+    else:
+        seed_split = int(seed_split)
+
+    ex = execution.Execution(Dataset(probe, gallery, train_split, test_split, seed_split), preproc, fe, Fmatcher)
 
     ranking_matrix = ex.run(fe4train_set=True)
 
     if appMainForm.radioButtonPOPBalancedAndVE.isChecked():
         balanced = True
         visual_expansion_use = True
-
     elif appMainForm.radioButtonPOPBalanced.isChecked():
         balanced = True
         visual_expansion_use = False
@@ -87,16 +92,28 @@ def run_image_selection(preproc):
         visual_expansion_use = False
     re_score_alpha = appMainForm.ReScoreAlpha.value()
     re_score_method_proportional = appMainForm.radioButtonReScoreProportional.isChecked()
-    POP = SAA(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
-              re_score_method_proportional=re_score_method_proportional)
+
+    if appMainForm.radioButtonRegionsNone.isChecked():
+        regions = None
+    elif appMainForm.radioButtonRegions2R.isChecked():
+        regions = [[0], [1]]
+    elif appMainForm.radioButtonRegions4R.isChecked():
+        regions = [[0, 1], [2, 3]]
+    else:  # if appMainForm.radioButtonRegions5R.isChecked():
+        regions = [[0, 1], [2, 3, 4]]
+
+    if appMainForm.LabSPradioButton.isChecked():
+        POP = LabSP(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
+                    re_score_method_proportional=re_score_method_proportional, regions=regions)
+    else:  # if appMainForm.SAAradioButton.isChecked():
+        POP = SAA(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
+                  re_score_method_proportional=re_score_method_proportional, regions=regions)
     POP.set_ex(ex, ranking_matrix)
+    appImagesForm.set_regions(regions)
+
     appImagesForm.update(POP)
     appMainForm.hide()
     appImagesForm.show()
-
-    # conf.run()
-    # conf.to_excel("../results/Salpica.xls")
-
 
 def iterate_images_selection(strong_negatives, weak_negatives):
     global POP, appImagesForm

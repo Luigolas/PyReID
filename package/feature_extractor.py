@@ -18,7 +18,6 @@ class FeatureExtractor(object):
 
 
 
-
         :param dataset:
         :param n_jobs:
         :param verbosity:

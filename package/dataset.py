@@ -16,7 +16,7 @@ class Dataset(object):
     :param test_size:
     """
 
-    def __init__(self, probe=None, gallery=None, train_size=None, test_size=None):
+    def __init__(self, probe=None, gallery=None, train_size=None, test_size=None, rand_state=None):
         self.probe = ImageSet(probe)
         self.gallery = ImageSet(gallery)
         if "viper" in probe:
@@ -28,7 +28,7 @@ class Dataset(object):
         self.train_indexes, self.test_indexes = [], []
         self.train_size = 0
         self.test_size = 0
-        self.generate_train_set(train_size, test_size)
+        self.generate_train_set(train_size, test_size, rand_state=rand_state)
 
     def set_probe(self, folder):
         """

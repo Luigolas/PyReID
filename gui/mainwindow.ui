@@ -39,7 +39,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -478,7 +478,21 @@
               <item>
                <widget class="QLineEdit" name="lineEditTestSplit">
                 <property name="text">
-                 <string>50</string>
+                 <string>316</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_30">
+                <property name="text">
+                 <string>Seed:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEditSeed">
+                <property name="text">
+                 <string>0</string>
                 </property>
                </widget>
               </item>
@@ -524,12 +538,22 @@
                </widget>
               </item>
               <item>
-               <widget class="QRadioButton" name="radioButton">
+               <widget class="QRadioButton" name="SAAradioButton">
                 <property name="text">
                  <string>SAA</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>
+                </property>
+                <attribute name="buttonGroup">
+                 <string notr="true">buttonGroupPostRankingMethod</string>
+                </attribute>
+               </widget>
+              </item>
+              <item>
+               <widget class="QRadioButton" name="LabSPradioButton">
+                <property name="text">
+                 <string>LabSP</string>
                 </property>
                 <attribute name="buttonGroup">
                  <string notr="true">buttonGroupPostRankingMethod</string>
@@ -685,6 +709,149 @@
                  </size>
                 </property>
                </spacer>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_10">
+              <item>
+               <widget class="QLabel" name="label_32">
+                <property name="text">
+                 <string>Regions Definition:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_3">
+                <item>
+                 <widget class="QRadioButton" name="radioButtonRegionsNone">
+                  <property name="text">
+                   <string>None</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">buttonGroupPOPRegions</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_27">
+                <item>
+                 <widget class="QRadioButton" name="radioButtonRegions2R">
+                  <property name="text">
+                   <string>2R:</string>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">buttonGroupPOPRegions</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_34">
+                  <property name="text">
+                   <string>[[0], [1]]</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_5">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_28">
+                <item>
+                 <widget class="QRadioButton" name="radioButtonRegions4R">
+                  <property name="text">
+                   <string>4R:</string>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">buttonGroupPOPRegions</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_35">
+                  <property name="text">
+                   <string>[[0, 1], [2, 3,]]</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_11">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_22">
+                <item>
+                 <widget class="QRadioButton" name="radioButtonRegions5R">
+                  <property name="text">
+                   <string>5R:</string>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">buttonGroupPOPRegions</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_9">
+                  <property name="text">
+                   <string>[[0, 1], [2, 3, 4]]</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_3">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
               </item>
              </layout>
             </item>
@@ -1576,10 +1743,11 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroupReScoreMethod"/>
   <buttongroup name="buttonGroupPostRankingMethod"/>
+  <buttongroup name="buttonGroupFeMatcherWeights"/>
   <buttongroup name="buttonGroupBalancedSelection"/>
   <buttongroup name="buttonGroupDimension"/>
-  <buttongroup name="buttonGroupFeMatcherWeights"/>
+  <buttongroup name="buttonGroupReScoreMethod"/>
+  <buttongroup name="buttonGroupPOPRegions"/>
  </buttongroups>
 </ui>

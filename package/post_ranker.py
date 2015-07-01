@@ -24,7 +24,7 @@ class PostRankOptimization(object):
            Example: regions=[[0, 1], [2, 3, 4]]
     :return:
     """
-    def __init__(self, balanced=False, visual_expansion_use=True, re_score_alpha=0.15,
+    def __init__(self, balanced=False, visual_expansion_use=True, re_score_alpha=0.15, affinity_beta=0.5,
                  re_score_method_proportional=True, regions=None, rfr_estimators=20, rfr_leafs=5,
                  rte_estimators=20, rte_leafs=1):
         self.subject = -1  # The order of the person to be Re-identified by the user (Initially -1)
@@ -69,6 +69,7 @@ class PostRankOptimization(object):
         else:
             self.use_visual_expansion = visual_expansion_use
         self.re_score_alpha = re_score_alpha
+        self.affinity_beta = affinity_beta
         self.re_score_method_proportional = re_score_method_proportional
         self.feature_matcher = None  # Initialized when set_ex
 
@@ -260,19 +261,20 @@ class SAA(PostRankOptimization):
         :param elem:
         :param comp_with_probe: The lowest value, the more similar (lowest distance)
         :param affinity: The higher value, the more affinity
-        :param elem2_fe:
+        :param similarity:
         :return:
         """
         # similarity = self.execution.feature_matcher.match(elem2_fe, self.execution.dataset.gallery.fe_test[elem])
         increment = sign * self.re_score_alpha
+        sim_beta = 1 - self.affinity_beta
         if self.re_score_method_proportional:
             self.comp_list[elem] = comp_with_probe + (increment * comp_with_probe *
-                                                      (0.5 * affinity + 0.5 * (1 - similarity)))
+                                                      (self.affinity_beta * affinity + sim_beta * (1 - similarity)))
         else:
             # self.comp_list[elem] = ((1 - self.re_score_alpha) * comp_with_probe) + \
             #                        (sign * affinity * self.re_score_alpha)
             self.comp_list[elem] = ((1 - self.re_score_alpha) * comp_with_probe) + \
-                                   (increment * (0.5 * affinity + 0.5 * (1 - similarity)))
+                                   (increment * (self.affinity_beta * affinity + sim_beta * (1 - similarity)))
 
     def reorder(self):
         for [sn, idx] in self.new_strong_negatives:

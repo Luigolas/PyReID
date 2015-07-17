@@ -85,7 +85,7 @@ Author
 ------
 This project is initiated as a Final Project in the University of Las Palmas by [**Luis González Medina**](http://www.luigolas.com). 
 
-Tutors of this project are [**Modesto Castrillón Santana**](http://berlioz.dis.ulpgc.es/roc-siani/personas/modesto) and [**Javier Lorenzo Navarro**](http://berlioz.dis.ulpgc.es/roc-siani/personas/javier-lorenzo-navarro)
+Tutors of this project are [**Modesto Castrillón Santana**](https://scholar.google.es/citations?user=awve1bIAAAAJ) and [**Javier Lorenzo Navarro**](https://scholar.google.es/citations?user=Flnbxo8AAAAJ)
 
 License
 -------

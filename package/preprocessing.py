@@ -478,7 +478,8 @@ class SilhouetteRegionsPartition(Preprocessing):
     def dissym_div(i, img, mask, delta, alpha):
         i, delta, MSK_D, MSK_U, imgDOWN, imgUP = SilhouetteRegionsPartition._init_sym(delta, i, img, mask)
 
-        dimLoc = delta + 1
+        dimLoc = delta
+        # dimLoc = delta + 1
         indexes = list(range(dimLoc))
 
         imgUPloc = imgUP[indexes, :, :]

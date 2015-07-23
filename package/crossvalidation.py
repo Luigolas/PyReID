@@ -1,3 +1,5 @@
+from package.execution import Execution
+
 __author__ = 'luigolas'
 
 import os
@@ -20,6 +22,7 @@ class CrossValidation():
     :return:
     """
     def __init__(self, execution, splits_file=None, num_validations=10, train_size=0, test_size=0.5):
+        assert(type(execution) == Execution)
         self.execution = execution
         self.statistics = []
         self.mean_stat = Statistics()

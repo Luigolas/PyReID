@@ -9,11 +9,12 @@ import sys
 from package.utilities import InitializationError
 import numpy as np
 from package.dataset import Dataset
+from package.feature_extractor import FeatureExtractor
+from package.feature_matcher import FeatureMatcher
 
 
 class Execution():
-    def __init__(self, dataset=None, preproc=None, feature_extractor=None, feature_matcher=None,
-                 post_ranker=None, train_split=None):
+    def __init__(self, dataset, preproc, feature_extractor, feature_matcher, train_split=None):
 
         if dataset is not None:
             assert(type(dataset) == Dataset)
@@ -24,8 +25,16 @@ class Execution():
             self.dataset.generate_train_set(train_split)
 
         self.preprocessing = preproc
-        self.feature_extractor = feature_extractor
-        self.feature_matcher = feature_matcher
+
+        if not isinstance(feature_extractor, FeatureExtractor):
+            raise TypeError("feature_extractor is not of class FeatureExtractor")
+        else:
+            self.feature_extractor = feature_extractor
+
+        if feature_matcher is not None:
+            assert(type(feature_matcher) == FeatureMatcher)
+            self.feature_matcher = feature_matcher
+
         self.matching_matrix = None
         # self.ranking_matrix = None
 

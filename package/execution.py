@@ -16,11 +16,11 @@ from package.feature_matcher import FeatureMatcher
 class Execution():
     def __init__(self, dataset, preproc, feature_extractor, feature_matcher, train_split=None):
 
-        if dataset is not None:
-            assert(type(dataset) == Dataset)
-            self.dataset = dataset
+        if not isinstance(dataset, Dataset):
+            raise TypeError("dataset is not of class Dataset")
         else:
-            self.dataset = Dataset()
+            self.dataset = dataset
+
         if train_split is not None:
             self.dataset.generate_train_set(train_split)
 
@@ -31,8 +31,9 @@ class Execution():
         else:
             self.feature_extractor = feature_extractor
 
-        if feature_matcher is not None:
-            assert(type(feature_matcher) == FeatureMatcher)
+        if not isinstance(feature_matcher, FeatureMatcher):
+            raise TypeError("feature_matcher is not of class FeatureMatcher")
+        else:
             self.feature_matcher = feature_matcher
 
         self.matching_matrix = None

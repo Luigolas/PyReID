@@ -54,14 +54,11 @@ class Execution():
     def set_feature_matcher(self, feature_matcher):
         self.feature_matcher = feature_matcher
 
-    def set_preprocessing(self, preprocessing):
+    def add_preprocessing(self, preprocessing):
         if self.preprocessing is None:
             self.preprocessing = [preprocessing]
         else:
             self.preprocessing.append(preprocessing)
-
-    def set_post_ranker(self, post_ranker):
-        self.post_ranker = post_ranker
 
     def name(self):
         """

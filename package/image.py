@@ -110,16 +110,6 @@ class Image(np.ndarray):
         :param colorspace:
         :return:
         """
-        # Attempt to load from DB
-        # try:
-        #     if DB:
-        #         img = DB[self.dbname(colorspace)]
-        #         img = Image(img, colorspace)
-        #         img.imgname = self.imgname
-        #         return img
-        # except FileNotFoundError:
-        #     #Not in DataBase, continue calculating
-        #     pass
         img = None
         if self.colorspace == CS_BGR:
             if colorspace == CS_IIP:
@@ -134,14 +124,8 @@ class Image(np.ndarray):
         elif self.colorspace == CS_HSV:
             if colorspace == CS_BGR:
                 img = self._hsv2bgr()
-        # img.imgname = self.imgname
-        #Save in Connection
-        # if DB:
-        #     DB[img.dbname()] = img
         return img
 
-    def dbname(self):
-        return abs(hash(self.tostring()))
 
     def _bgr2iip(self):
         # Convert to CV_32F3 , floating point in range 0.0 , 1.0

@@ -126,7 +126,6 @@ class Image(np.ndarray):
                 img = self._hsv2bgr()
         return img
 
-
     def _bgr2iip(self):
         # Convert to CV_32F3 , floating point in range 0.0 , 1.0
         # imgf32 = np.float32(self)

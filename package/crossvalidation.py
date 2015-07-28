@@ -98,13 +98,17 @@ class CrossValidation():
         self.dataframe = None
         # self._check_initialization()
 
-        if self.train_size == 0 and not self.files:
+        if self.train_size == 0:  #Full execution and then
             self.execution.dataset.generate_train_set(train_size=None, test_size=None)
             if verbosity >= 0: print("******** Execution 1 of 1 ********")
             r_m = self.execution.run(verbosity)
             if verbosity > 0: print("Calculating Statistics")
             for val in range(self.num_validations):
-                self.execution.dataset.generate_train_set(train_size=0, test_size=self.test_size)
+                if self.files:
+                    self.execution.dataset.change_probe_and_gallery(self.files[val][0], self.files[val][1],
+                                                                    train_size=self.train_size)
+                else:
+                    self.execution.dataset.generate_train_set(train_size=0, test_size=self.test_size)
                 statistic = Statistics()
                 statistic.run(self.execution.dataset, r_m)
                 self.statistics.append(statistic)

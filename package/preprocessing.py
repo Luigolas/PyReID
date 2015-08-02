@@ -428,9 +428,9 @@ class SilhouetteRegionsPartition(Preprocessing):
         im_hsv = im.to_color_space(CS_HSV, normed=True)
 
         lineTL = np.uint16(
-            fminbound(SilhouetteRegionsPartition.dissym_div, self.search_range_H[0], self.search_range_H[1],
+            fminbound(SilhouetteRegionsPartition._dissym_div, self.search_range_H[0], self.search_range_H[1],
                       (im_hsv, mask, self.deltaI, self.alpha), 1e-3))
-        lineHT = np.uint16(fminbound(SilhouetteRegionsPartition.dissym_div_Head, 5,
+        lineHT = np.uint16(fminbound(SilhouetteRegionsPartition._dissym_div_Head, 5,
                                      lineTL, (im_hsv, mask, self.deltaI), 1e-3))
 
         # TODO consider subdivision
@@ -475,7 +475,7 @@ class SilhouetteRegionsPartition(Preprocessing):
         return i, delta, MSK_D, MSK_U, imgDOWN, imgUP
 
     @staticmethod
-    def dissym_div(i, img, mask, delta, alpha):
+    def _dissym_div(i, img, mask, delta, alpha):
         i, delta, MSK_D, MSK_U, imgDOWN, imgUP = SilhouetteRegionsPartition._init_sym(delta, i, img, mask)
 
         dimLoc = delta
@@ -491,7 +491,7 @@ class SilhouetteRegionsPartition(Preprocessing):
         return d
 
     @staticmethod
-    def dissym_div_Head(i, img, mask, delta):
+    def _dissym_div_Head(i, img, mask, delta):
         i, delta, MSK_D, MSK_U, imgDOWN, imgUP = SilhouetteRegionsPartition._init_sym(delta, i, img, mask)
 
         localderU = list(range(max(i - delta, 0), i))
@@ -509,7 +509,7 @@ class VerticalRegionsPartition(Preprocessing):
     def __init__(self, regions=None, regions_name=None, skip=False):
         super(VerticalRegionsPartition, self).__init__(skip)
         if regions is None:
-            self.regions = [[16, 33], [33, 50], [50, 67], [67, 84], [84, 100]]
+            self.regions = [[16, 33], [33, 50], [50, 67], [67, 84], [84, 100]]  # Over 100% size, not actual image size
         else:
             self.regions = regions
         if regions_name is None:
@@ -522,8 +522,7 @@ class VerticalRegionsPartition(Preprocessing):
             return
 
         if verbosity > 1: print("   Generating Vertical regions...")
-        # [[0, 16], [16, 33], [33, 50], [50, 67], [67, 84], [84, 100]] #  Over 100% size, not actual image size
-        (I, J, _) = dataset.probe.images_test[0].shape
+        (I, J, _) = dataset.probe.images_test[0].shape  # Assumes all dataset images of same size for speedup
         regions = []
         for r in self.regions:
             regions.append((int(r[0] * I / 100.), int(r[1] * I / 100.), 0, J))

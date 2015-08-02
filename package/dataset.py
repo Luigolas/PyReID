@@ -162,13 +162,13 @@ class Dataset(object):
         if train_size > 0:
             self.train_size = train_size
             # http://stackoverflow.com/a/15940459/3337586
-            mask = np.in1d(self.probe.files, self.probe.files_test)
-            probe_train_files = [self.probe.files[i] for i in np.where(~mask)[0]]
+            selected = np.in1d(self.probe.files, self.probe.files_test)
+            probe_train_files = [self.probe.files[i] for i in np.where(~selected)[0]]
             permutation = np.random.RandomState().permutation(len(probe_train_files))
             ind_test = permutation[:train_size]
             self.train_indexes = ind_test
             self.probe.files_train = [probe_train_files[i] for i in ind_test]
-            gallery_train_files = [self.gallery.files[i] for i in np.where(~mask)[0]]
+            gallery_train_files = [self.gallery.files[i] for i in np.where(~selected)[0]]
             self.gallery.files_train = [gallery_train_files[i] for i in ind_test]
 
     def load_images(self):

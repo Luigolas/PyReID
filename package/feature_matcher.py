@@ -109,13 +109,13 @@ class HistogramsCompare(FeatureMatcher):
             if np.count_nonzero(h1) == 0 and np.count_nonzero(h2) == 0:
                 # Might return inequality when both histograms are zero. So we compare two simple histogram to ensure
                 # equality return value
-                comp_val.append(self.compareHist(np.asarray([1], np.float32), np.asarray([1], np.float32)))
+                comp_val.append(self._compareHist(np.asarray([1], np.float32), np.asarray([1], np.float32)))
             else:
-                comp_val.append(self.compareHist(h1, h2))
+                comp_val.append(self._compareHist(h1, h2))
         comp_val = sum([i * j for i, j in zip(comp_val, weights)])
         return comp_val
 
-    def compareHist(self, h1, h2):
+    def _compareHist(self, h1, h2):
         """
 
         :param h1:

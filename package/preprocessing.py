@@ -573,7 +573,7 @@ class GaussianMap(Preprocessing):
         if verbosity > 1: print("   Calculating %s Maps..." % self.kernel_name)
         (_, self.J, _) = dataset.probe.images_test[0].shape  # Assumes all images of same shame
         self.deltaJ = self.J / 3
-        self.deviations = self.sigmas / self.deviations
+        # self.deviations = self.sigmas / self.deviations
         self.sigmas = self.J / self.sigmas
 
         self.search_range_V = [self.deltaJ, (self.J - self.deltaJ) - 1]

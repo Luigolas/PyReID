@@ -25,7 +25,7 @@ def _parallel_match(*args):
 
 
 class FeatureMatcher(object):
-    def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1, verbosity=2):
+    def match_sets(self, probe_fe, gallery_fe, n_jobs=-1, verbosity=2):
         raise NotImplementedError("Please Implement match_probe_gallery method")
 
     def match(self, ev1, ev2):
@@ -55,17 +55,17 @@ class HistogramsCompare(FeatureMatcher):
         self._weights = weights
         self.name = method_names[self.method]
 
-    def match_probe_gallery(self, probe_fe, gallery_fe, n_jobs=-1, verbosity=2):
+    def match_sets(self, set1_fe, set2_fe, n_jobs=-1, verbosity=2):
         """
 
-        :param probe_fe:
-        :param gallery_fe:
+        :param set1_fe:
+        :param set2_fe:
         :param n_jobs:
         :return:
         """
         if verbosity > 1: print("   Comparing Histograms")
 
-        args = ((elem1, elem2) for elem1 in probe_fe for elem2 in gallery_fe)
+        args = ((elem1, elem2) for elem1 in set1_fe for elem2 in set2_fe)
         args = zip(itertools.repeat(self), args)
 
         if n_jobs == 1:
@@ -79,8 +79,9 @@ class HistogramsCompare(FeatureMatcher):
             pool.close()
             pool.join()
 
-        size = math.sqrt(comparison_matrix.shape[0])
-        comparison_matrix.shape = (size, size)
+        # size = math.sqrt(comparison_matrix.shape[0])
+        # comparison_matrix.shape = (size, size)
+        comparison_matrix.shape = (len(set1_fe), len(set2_fe))
         return comparison_matrix
 
     def match(self, hists1, hists2):

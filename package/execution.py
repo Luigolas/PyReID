@@ -1,4 +1,3 @@
-
 __author__ = 'luigolas'
 
 # import time
@@ -172,19 +171,16 @@ class Execution():
         self.feature_extractor.extract_dataset(self.dataset, n_jobs, verbosity, extract_train)
 
     def _calc_matching_matrix(self, n_jobs=-1, verbosity=2):
-        self.matching_matrix = self.feature_matcher.match_probe_gallery(self.dataset.probe.fe_test,
-                                                                        self.dataset.gallery.fe_test,
-                                                                        n_jobs, verbosity)
+        self.matching_matrix = self.feature_matcher.match_sets(self.dataset.probe.fe_test,
+                                                               self.dataset.gallery.fe_test,
+                                                               n_jobs, verbosity)
 
     def _calc_ranking_matrix(self):
         import package.feature_matcher as Comparator
         if self.feature_matcher.method == Comparator.HISTCMP_CORRE or \
-           self.feature_matcher.method == Comparator.HISTCMP_INTERSECT:
+                        self.feature_matcher.method == Comparator.HISTCMP_INTERSECT:
             # The biggest value, the better
             return np.argsort(self.matching_matrix, axis=1)[:, ::-1].astype(np.uint16)
             # Reverse order by axis 1
         else:  # The lower value, the better
             return np.argsort(self.matching_matrix).astype(np.uint16)
-
-
-

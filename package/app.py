@@ -8,7 +8,7 @@ from package import feature_extractor
 from package.image import CS_HSV, CS_BGR, CS_IIP
 import package.execution as execution
 from package.dataset import Dataset
-from package.post_ranker import SAA, LabSP
+from package.post_ranker import SAA, LabSP, SAL
 import package.feature_matcher as FM
 from gui.gui import MainWindow, ImagesSelectionForm
 
@@ -79,7 +79,7 @@ def run_image_selection(preproc):
 
     ex = execution.Execution(Dataset(probe, gallery, train_split, test_split, seed_split), preproc, fe, Fmatcher)
 
-    ranking_matrix = ex.run(fe4train_set=True)
+    ranking_matrix = ex.run(fe4train_set=True, njobs=1)
 
     if appMainForm.radioButtonPOPBalancedAndVE.isChecked():
         balanced = True
@@ -106,14 +106,17 @@ def run_image_selection(preproc):
         POP = LabSP(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
                     re_score_method_proportional=re_score_method_proportional, regions=regions)
     else:  # if appMainForm.SAAradioButton.isChecked():
-        POP = SAA(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
-                  re_score_method_proportional=re_score_method_proportional, regions=regions)
+        # POP = SAA(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
+        #           re_score_method_proportional=re_score_method_proportional, regions=regions)
+        POP = SAL(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
+                  re_score_proportional=re_score_method_proportional, regions=regions)
     POP.set_ex(ex, ranking_matrix)
     appImagesForm.set_regions(regions)
 
     appImagesForm.update(POP)
     appMainForm.hide()
     appImagesForm.show()
+
 
 def iterate_images_selection(strong_negatives, weak_negatives):
     global POP, appImagesForm

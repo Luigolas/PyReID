@@ -433,7 +433,7 @@ class SilhouetteRegionsPartition(Preprocessing):
         lineHT = np.uint16(fminbound(SilhouetteRegionsPartition._dissym_div_Head, 5,
                                      lineTL, (im_hsv, mask, self.deltaI), 1e-3))
 
-        # TODO consider subdivision
+        # consider subdivision
         if self.sub_divisions > 1:
             regions = []
             incr = (lineTL - lineHT) / self.sub_divisions

@@ -525,38 +525,12 @@
                </widget>
               </item>
               <item>
-               <widget class="QRadioButton" name="radioButton_2">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>POP</string>
-                </property>
-                <attribute name="buttonGroup">
-                 <string notr="true">buttonGroupPostRankingMethod</string>
-                </attribute>
-               </widget>
-              </item>
-              <item>
                <widget class="QRadioButton" name="SAAradioButton">
                 <property name="text">
-                 <string>SAA</string>
+                 <string>SAL</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>
-                </property>
-                <attribute name="buttonGroup">
-                 <string notr="true">buttonGroupPostRankingMethod</string>
-                </attribute>
-               </widget>
-              </item>
-              <item>
-               <widget class="QRadioButton" name="LabSPradioButton">
-                <property name="text">
-                 <string>LabSP</string>
-                </property>
-                <property name="checked">
-                 <bool>false</bool>
                 </property>
                 <attribute name="buttonGroup">
                  <string notr="true">buttonGroupPostRankingMethod</string>
@@ -1752,11 +1726,11 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroupBalancedSelection"/>
-  <buttongroup name="buttonGroupPOPRegions"/>
-  <buttongroup name="buttonGroupDimension"/>
   <buttongroup name="buttonGroupPostRankingMethod"/>
   <buttongroup name="buttonGroupFeMatcherWeights"/>
   <buttongroup name="buttonGroupReScoreMethod"/>
+  <buttongroup name="buttonGroupBalancedSelection"/>
+  <buttongroup name="buttonGroupDimension"/>
+  <buttongroup name="buttonGroupPOPRegions"/>
  </buttongroups>
 </ui>

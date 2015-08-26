@@ -102,14 +102,14 @@ def run_image_selection(preproc):
     else:  # if appMainForm.radioButtonRegions5R.isChecked():
         regions = [[0, 1], [2, 3, 4]]
 
-    if appMainForm.LabSPradioButton.isChecked():
-        POP = LabSP(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
-                    re_score_method_proportional=re_score_method_proportional, regions=regions)
-    else:  # if appMainForm.SAAradioButton.isChecked():
+    # if appMainForm.LabSPradioButton.isChecked():
+    #     POP = LabSP(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
+    #                 re_score_method_proportional=re_score_method_proportional, regions=regions)
+    # else:  # if appMainForm.SAAradioButton.isChecked():
         # POP = SAA(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
         #           re_score_method_proportional=re_score_method_proportional, regions=regions)
-        POP = SAL(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
-                  re_score_proportional=re_score_method_proportional, regions=regions)
+    POP = SAL(balanced=balanced, visual_expansion_use=visual_expansion_use, re_score_alpha=re_score_alpha,
+              re_score_proportional=re_score_method_proportional, regions=regions)
     POP.set_ex(ex, ranking_matrix)
     appImagesForm.set_regions(regions)
 

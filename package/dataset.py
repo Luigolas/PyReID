@@ -145,7 +145,7 @@ class Dataset(object):
         # self.probe.files_train, self.probe.files_test, self.gallery.files_train, self.gallery.files_test = \
         #     train_test_split(self.probe.files, self.gallery.files, train_size=train_size, test_size=test_size,
         #                      random_state=0)
-        # TODO: Assuming same gallery and probe size
+        # Assuming same gallery and probe size
 
     def change_probe_and_gallery(self, probe_list, gallery_list, train_size=0):
         """

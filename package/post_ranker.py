@@ -208,7 +208,7 @@ class PostRankOptimization(object):
     def _calc_target_position(self):  # OK
         for column, elemg in enumerate(self.rank_list):
             if self.execution.dataset.same_individual_by_pos(self.subject, elemg, selected_set="test"):
-                target_position = column  # TODO: If not multiview we could exit loop here
+                target_position = column  # If not multiview we can exit loop here
                 self.target_position = target_position
                 break
 
@@ -611,8 +611,15 @@ class SAL(PostRankOptimization):
             if not hasattr(regressor, "n_iter_"):  # check if initialized
                 predictions.append(None)
             Xr = elems_fe_list[idx]
-            pred = regressor.predict_proba(Xr)
-            pred = pred[:, 0] - pred[:, 1]
+            pred = np.nan_to_num(regressor.predict_proba(Xr))  # To prevent nan values
+            # if pred.max() == pred.min():  # Sometimes it predicts all for the same class... not useful at all
+            #     predictions.append(None)
+            # else:
+            # print(pred.shape)
+            if pred.shape[1] == 2:
+                pred = pred[:, 0] - pred[:, 1]
+            else:
+                pred.shape = (pred.shape[0], )
             predictions.append(pred)
         predictions = [e for e in predictions if e is not None]
         return np.asarray(predictions).mean(axis=0)

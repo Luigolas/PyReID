@@ -422,12 +422,13 @@ class SAL(PostRankOptimization):
 
     def initial_iteration(self):
         super(SAL, self).initial_iteration()
-        for idx, cl_forest in enumerate(self.cluster_forest):
-            region_size = self.size_for_each_region_in_fe * len(self.regions[idx])
-            initial_pos = self.regions[idx][0] * self.size_for_each_region_in_fe
-            fe_test_idx = self.execution.dataset.gallery.fe_test[:, initial_pos:region_size]
-            cl_forest.fit(fe_test_idx)
-            self.affinity_matrix.append(self.calc_affinity_matrix(cl_forest, fe_test_idx))
+        if self.weights[1] > 0:
+            for idx, cl_forest in enumerate(self.cluster_forest):
+                region_size = self.size_for_each_region_in_fe * len(self.regions[idx])
+                initial_pos = self.regions[idx][0] * self.size_for_each_region_in_fe
+                fe_test_idx = self.execution.dataset.gallery.fe_test[:, initial_pos:region_size]
+                cl_forest.fit(fe_test_idx)
+                self.affinity_matrix.append(self.calc_affinity_matrix(cl_forest, fe_test_idx))
 
     def init_regressors(self, region_size_list, initial_pos_list):
         X = self.execution.dataset.gallery.fe_test
@@ -515,7 +516,10 @@ class SAL(PostRankOptimization):
         similarity_wn = self._similarity(elems_fe_list, self.new_weak_negatives + self.new_visual_expanded,
                                          region_size_list, initial_pos_list)
 
-        affinity_sn, affinity_wn = self._affinity(elems_fe_list, region_size_list, initial_pos_list)
+        if self.weights[1] > 0:
+            affinity_sn, affinity_wn = self._affinity(elems_fe_list, region_size_list, initial_pos_list)
+        else:
+            affinity_sn, affinity_wn = np.asarray([0] * len(self.comp_list)), np.asarray([0] * len(self.comp_list))
 
         if self.weights[2] > 0:
             self.init_regressors(region_size_list, initial_pos_list)
